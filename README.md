@@ -8,5 +8,5 @@ Andmebaas ja sõidukist reaalajas andmete laadimine andmebaasi on olemas.
 Frontend (HTML/JavaScript):
 JavaScript fetches the data from Python backend.
 JavaScript (using Leaflet.js) places the car markers on the map.
-Backlend (Python):
+Backend (Python):
 Python handles the database.
