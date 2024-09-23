@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Car Tracking with Smooth Transition</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css"> <!-- Link to your CSS file -->
+
+</head>
+<body>
+
+    <header>
+        <h1>Isejuhtiv sõiduk</h1>
+    </header>
+    
+    <section>
+        <!-- Image of the car -->
+        <img id="carImage" src="images/IseAuto.jpg" alt="Auto Pilt" />
+        <p> See on isejuhtiv auto </p>
+
+        <p>Valige menüünst auto ja vajutage pärast seda nupule "Vali", et näha auto asukohta</p>
+
+        <!-- Dropdown to select cars -->
+        <select id="carSelect">
+            <option value="">-- Valige auto --</option>
+        </select>
+
+        <!-- Button to fly to car location -->
+        <button onclick="flyToCar()">Vali</button>
+
+        <div id="map"></div> <!-- Map container -->
+    </section>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js"></script> <!-- Link to your JS file -->
+
+</body>
+</html>
