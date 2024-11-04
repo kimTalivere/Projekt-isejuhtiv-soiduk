@@ -4,27 +4,95 @@ body {
     padding: 0;
     background-color: #f0f0f0;
 }
+
 header {
     background-color: #4CAF50;
     color: white;
     padding: 10px;
     text-align: center;
 }
+
 section {
     padding: 20px;
     text-align: center;
 }
+
 #map {
     height: 500px;
     width: 100%;
     margin-top: 20px;
 }
+
+/* New CSS for split-screen layout */
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+.left-panel {
+    width: 50%;
+    max-width: 500px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;  /* Sisu ülemisse ossa */
+    align-items: flex-start;      /* Ülemine paigutus horisontaalselt */
+}
+
+.right-panel {
+    width: 50%;
+    height: 100vh;
+    max-width: 500px;
+    display: flex;
+    justify-content: flex-start;  /* Sisu ülemisse ossa horisontaalselt */
+    align-items: flex-start;      /* Ülemine paigutus vertikaalselt */
+    flex-direction: column;
+}
+
+#map {
+    height: 500px;
+    width: 100%;
+    margin-top: 20px;
+}
+
 select, button {
     padding: 10px;
     font-size: 16px;
     margin: 10px;
 }
+
 #carImage {
-    width: 300px; /* Adjust the width as needed */
+    width: 100%; /* Makes the image take the full width of the container */
+    height: auto; /* Maintains the aspect ratio */
+    max-width: 1000px; /* Set a maximum width if necessary */
     margin-top: 20px;
+    display: block; /* Ensures the image behaves as a block element */
+    margin: 35px;
 }
+
+#carInfo {
+    margin-top: 20px;
+    text-align: left;
+    font-size: 16px;
+    color: #333;
+}
+
+#carInfo p {
+    margin: 10px 0;
+}
+
+#carName {
+    font-weight: bold;
+}
+
+#coordinates {
+    color: #555;
+}
+
+#carSelect {
+    margin-top: 20px;
+    text-align: left;
+    font-size: 16px;
+    color: #333;
+}
+

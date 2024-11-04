@@ -4,40 +4,166 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Car Tracking with Smooth Transition</title>
+    <title>Car Tracking</title>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="styles.css"> <!-- Link to your CSS file -->
-
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-    <header>
-        <h1>Isejuhtiv sõiduk</h1>
-    </header>
-    
     <section>
-        <!-- Image of the car -->
-        <img id="carImage" src="images/IseAuto.jpg" alt="Auto Pilt" />
-        <p> See on isejuhtiv auto </p>
+        <img id="carImage" src="images/UleminePilt.png" alt="Auto Pilt" />
 
-        <p>Valige menüünst auto ja vajutage pärast seda nupule "Vali", et näha auto asukohta</p>
+        <div class="container">
+            <!-- Left panel for car information -->
+            <div class="left-panel">
+                <!-- Car information will appear here -->
+                <div id="carInfo">
+                    <p id="carName">Auto Nimi:</p>
+                    <p id="coordinates">Koordinaadid: </p>
+                    <p id="batteryInfo"></p>
+                    
+                    <!-- Battery percentage doughnut chart -->
+                </div>
 
-        <!-- Dropdown to select cars -->
-        <select id="carSelect">
-            <option value="">-- Valige auto --</option>
-        </select>
+                <div id="batteryChartContainer">
+                    <canvas id="batteryChart" width="100" height="100"></canvas>
+                </div>
 
-        <!-- Button to fly to car location -->
-        <button onclick="flyToCar()">Vali</button>
+            </div>
 
-        <div id="map"></div> <!-- Map container -->
+            <!-- Right panel for the map -->
+            <div class="right-panel">
+                <div id="map"></div> <!-- Map container -->
+            </div>
+        </div>
     </section>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="script.js"></script> <!-- Link to your JS file -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Function to get query parameters from the URL
+            function getQueryParams() {
+                const urlParams = new URLSearchParams(window.location.search);
+                return {
+                    carId: urlParams.get('carId')
+                };
+            }
+
+            const carLocations = {}; // Object to hold car locations
+            const markers = {}; // Object to hold markers
+
+            // Initialize the map and set the initial view
+            var map = L.map('map').setView([59.395720, 24.672221], 13);
+
+            // Add OpenStreetMap tiles to the map
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Get the carId from the URL query parameter
+            const { carId } = getQueryParams();
+            if (!carId) {
+                alert('No car selected. Please go back to select a car.');
+                return;
+            }
+
+            // Fetch car data from the API
+            fetch('http://127.0.0.1:5000/api/cars')
+                .then(response => response.json())
+                .then(data => {
+                    const car = data.find(c => c.id == carId); // Find the selected car
+                    if (car) {
+                        const { name, latitude, longitude } = car;
+
+                        // Fly to the car's location
+                        map.flyTo([latitude, longitude], 17, { 
+                            animate: true,
+                            duration: 2
+                        });
+
+                        // Show car info
+                        document.getElementById('carName').textContent = `Auto Nimi: ${name}`;
+                        document.getElementById('coordinates').textContent = `Koordinaadid: (${latitude}, ${longitude})`;
+
+                        // Add a marker for the car's location
+                        L.marker([latitude, longitude]).addTo(map)
+                            .bindPopup(`<b>${name}</b><br>Koordinaadid: (${latitude}, ${longitude})`).openPopup();
+
+                        // Fetch battery percentage for the selected car
+                        fetchBatteryPercentage();
+
+                    } else {
+                        alert('Car not found.');
+                    }
+                })
+                .catch(error => console.error('Error fetching car data:', error));
+
+            // Function to fetch battery percentage and update the chart
+            function fetchBatteryPercentage() {
+                fetch(`http://127.0.0.1:5000/api/battery_percentage?vehicle_id=${carId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.parameter_name && data.range_function) {
+                        const batteryValue = parseFloat(data.range_function);
+                        document.getElementById('batteryInfo');
+                
+                        // Update chart labels and data
+                        batteryChart.data.labels = [`Aku: ${batteryValue} %`];
+                        updateBatteryChart(batteryValue);  // Update the chart with the fetched value
+                    } else {
+                        document.getElementById('batteryInfo').textContent = "Battery information not available.";
+            }
+        })
+        .catch(error => console.error('Error fetching battery percentage:', error));
+}
+
+
+            // Initialize the battery doughnut chart
+            const ctx = document.getElementById('batteryChart').getContext('2d');
+            const batteryChart = new Chart(ctx, {
+                type: 'doughnut', // Use doughnut chart
+                data: {
+                    
+                    datasets: [{
+                        label: 'Battery Level (%)',
+                        data: [0, 100], // Initialize with zero and 100
+                        backgroundColor: ['rgba(75, 192, 192, 1)', 'rgba(201, 203, 207, 0.2)'],
+                        borderColor: ['rgba(75, 192, 192, 1)', 'rgba(201, 203, 207, 1)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    return tooltipItem.label + ': ' + tooltipItem.raw + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Function to update the battery chart
+            function updateBatteryChart(value) {
+                batteryChart.data.datasets[0].data[0] = value; // Update battery level
+                batteryChart.data.datasets[0].data[1] = 100 - value; // Update remaining percentage
+                batteryChart.update(); // Refresh the chart
+            }
+        });
+    </script>
 
 </body>
 </html>

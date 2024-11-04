@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Select Car</title>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 20px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 400px;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        select:focus {
+            border-color: #6c63ff;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            color: #fff;
+            background-color: #6c63ff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #5753d1;
+        }
+
+        button:active {
+            background-color: #4846b3;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Valige auto</h1>
+
+        <!-- Dropdown to select cars -->
+        <select id="carSelect">
+            <option value="">--Vali--</option>
+            <!-- Car options will be dynamically populated by JS -->
+        </select>
+
+        <!-- Button to submit the selection -->
+        <button onclick="goToCarPage()">Edasta</button>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Fetch car data from the API to populate the dropdown
+            fetch('http://127.0.0.1:5000/api/cars')
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(car => {
+                        const option = document.createElement('option');
+                        option.value = car.id;  // The car's ID will be used in the query parameter
+                        option.textContent = car.name;
+                        document.getElementById('carSelect').appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error fetching car data:', error));
+        });
+
+        // Function to redirect to index.html with the selected car's ID
+        function goToCarPage() {
+            const selectedCarId = document.getElementById('carSelect').value;
+            if (selectedCarId) {
+                // Redirect to index.html with car ID in the query string
+                window.location.href = `index.html?carId=${selectedCarId}`;
+            } else {
+                alert('Please select a car.');
+            }
+        }
+    </script>
+
+</body>
+</html>
