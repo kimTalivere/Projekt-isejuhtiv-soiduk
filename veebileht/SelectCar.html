@@ -3,113 +3,313 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Select Car</title>
-    
+    <title>ISEAUTO Vehicle Selection</title>
+
+    <!-- Leaflet CSS for the map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Chart.js for battery doughnut charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
+        /* Reset and full-screen setup */
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            flex-direction: column;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
         }
 
+        /* Container for title and main content */
         .container {
-            background-color: #ffffff;
-            padding: 20px 40px;
-            border-radius: 12px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             text-align: center;
-            max-width: 400px;
         }
 
-        h1 {
-            font-size: 24px;
-            margin-bottom: 20px;
+        /* Title styling */
+        .title {
+            font-size: 4vw;
             color: #333;
+            font-weight: bold;
+            margin: 20px 0;
         }
 
-        select {
-            width: 100%;
-            padding: 10px;
-            font-size: 16px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
+        .subtitle {
+            font-size: 1.5vw;
+            color: #666;
             margin-bottom: 20px;
-            outline: none;
-            transition: border-color 0.3s;
         }
 
-        select:focus {
-            border-color: #6c63ff;
-        }
-
-        button {
+        /* Main content area split 50/50 */
+        .main-content {
+            display: flex;
             width: 100%;
-            padding: 12px;
-            font-size: 16px;
-            color: #fff;
-            background-color: #6c63ff;
-            border: none;
+            height: 80%;
+            padding: 20px;
+        }
+
+        /* Left panel for the map */
+        .left-panel {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
             border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Right panel for car details */
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        /* Each car info card as a button */
+        .car-info {
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             cursor: pointer;
             transition: background-color 0.3s;
         }
 
-        button:hover {
-            background-color: #5753d1;
+        .car-info:hover {
+            background-color: #f0f0f0;
         }
 
-        button:active {
-            background-color: #4846b3;
+        .car-details {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .car-title {
+            font-size: 1.2vw;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .info-item {
+            font-size: 1vw;
+            color: #555;
+        }
+
+        .chart-container {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            margin-left: 20px;
+        }
+
+        .chart-container .chart-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1vw;
+            font-weight: bold;
+            color: #333;
         }
     </style>
 </head>
 <body>
 
+    <!-- Main Container -->
     <div class="container">
-        <h1>Valige auto</h1>
+        <h1 class="title">ISEAUTO</h1>
+        <p class="subtitle">Palun valige auto täpsema info jaoks</p>
 
-        <!-- Dropdown to select cars -->
-        <select id="carSelect">
-            <option value="">--Vali--</option>
-            <!-- Car options will be dynamically populated by JS -->
-        </select>
+        <!-- Main Content: Split 50/50 -->
+        <div class="main-content">
+            <!-- Left Panel: Map -->
+            <div class="left-panel">
+                <div id="map"></div>
+            </div>
 
-        <!-- Button to submit the selection -->
-        <button onclick="goToCarPage()">Edasta</button>
+            <!-- Right Panel: Car Information -->
+            <div class="right-panel" id="carList">
+                <!-- Car info boxes will be populated here by JavaScript -->
+            </div>
+        </div>
     </div>
 
+    <!-- Leaflet JS for the map -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            // Fetch car data from the API to populate the dropdown
+        // Initialize Leaflet map
+        var map = L.map('map').setView([59.395720, 24.672221], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        const markers = {};
+
+        // Fetch car data from the backend and populate the car info boxes
+        function fetchCarData() {
             fetch('http://127.0.0.1:5000/api/cars')
                 .then(response => response.json())
-                .then(data => {
-                    data.forEach(car => {
-                        const option = document.createElement('option');
-                        option.value = car.id;  // The car's ID will be used in the query parameter
-                        option.textContent = car.name;
-                        document.getElementById('carSelect').appendChild(option);
-                    });
+                .then(cars => {
+                    populateCarInfo(cars);
+                    displayCarMarkers(cars);
                 })
-                .catch(error => console.error('Error fetching car data:', error));
-        });
-
-        // Function to redirect to index.html with the selected car's ID
-        function goToCarPage() {
-            const selectedCarId = document.getElementById('carSelect').value;
-            if (selectedCarId) {
-                // Redirect to index.html with car ID in the query string
-                window.location.href = `index.html?carId=${selectedCarId}`;
-            } else {
-                alert('Please select a car.');
-            }
+                .catch(error => console.error("Error fetching car data:", error));
         }
+
+        // Fetch battery level from the backend for a specific car
+        function fetchBatteryPercentage(vehicleId, chartLabel) {
+            fetch(`http://127.0.0.1:5000/api/battery_percentage?vehicle_id=${vehicleId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const batteryLevel = data && data.parameter_value ? parseFloat(data.parameter_value) : 0;
+                    updateBatteryChart(chartLabel, batteryLevel);
+                })
+                .catch(error => console.error("Error fetching battery data:", error));
+        }
+
+        // Populate the car info boxes
+        function populateCarInfo(cars) {
+            const carList = document.getElementById('carList');
+            carList.innerHTML = ''; // Clear existing content
+
+            cars.forEach((car, index) => {
+                const carInfoDiv = document.createElement('div');
+                carInfoDiv.className = 'car-info';
+                carInfoDiv.onclick = () => showDetails(car.id);
+
+                const carDetailsDiv = document.createElement('div');
+                carDetailsDiv.className = 'car-details';
+
+                const carTitle = document.createElement('p');
+                carTitle.className = 'car-title';
+                carTitle.textContent = car.name;
+
+                const carAddress = document.createElement('p');
+                carAddress.className = 'info-item';
+                carAddress.textContent = `Address: ${car.latitude}, ${car.longitude}`;
+
+                const carMotion = document.createElement('p');
+                carMotion.className = 'info-item';
+                carMotion.textContent = `In Motion: ${car.in_motion ? 'Yes' : 'No'}`;
+
+                const carVelocity = document.createElement('p');
+                carVelocity.className = 'info-item';
+                carVelocity.textContent = `Velocity: ${car.velocity || 'N/A'} km/h`;
+
+                carDetailsDiv.appendChild(carTitle);
+                carDetailsDiv.appendChild(carAddress);
+                carDetailsDiv.appendChild(carMotion);
+                carDetailsDiv.appendChild(carVelocity);
+
+                const chartContainer = document.createElement('div');
+                chartContainer.className = 'chart-container';
+
+                const canvas = document.createElement('canvas');
+                canvas.id = `batteryChart${index + 1}`;
+                chartContainer.appendChild(canvas);
+
+                const chartLabel = document.createElement('div');
+                chartLabel.className = 'chart-label';
+                chartLabel.id = `batteryLabel${index + 1}`;
+                chartLabel.textContent = "0%";
+                chartContainer.appendChild(chartLabel);
+
+                carInfoDiv.appendChild(carDetailsDiv);
+                carInfoDiv.appendChild(chartContainer);
+                carList.appendChild(carInfoDiv);
+
+                initBatteryChart(canvas, chartLabel, 0); // Initialize chart with 0%
+
+                // Fetch battery percentage for each car and update label and chart
+                fetchBatteryPercentage(car.id, chartLabel);
+            });
+        }
+
+        // Initialize a battery chart
+        function initBatteryChart(canvas, label, percentage) {
+            const ctx = canvas.getContext('2d');
+            const batteryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        label: 'Battery Level (%)',
+                        data: [percentage, 100 - percentage],
+                        backgroundColor: ['rgba(75, 192, 192, 1)', 'rgba(201, 203, 207, 0.2)'],
+                        borderColor: ['rgba(75, 192, 192, 1)', 'rgba(201, 203, 207, 1)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    }
+                }
+            });
+            label.textContent = `${percentage}%`;
+            return batteryChart;
+        }
+
+        // Update the battery chart and label
+        function updateBatteryChart(label, percentage) {
+            const canvas = label.previousElementSibling;
+            const ctx = canvas.getContext('2d');
+            const batteryChart = Chart.getChart(ctx);
+            if (batteryChart) {
+                batteryChart.data.datasets[0].data = [percentage, 100 - percentage];
+                batteryChart.update();
+            }
+            label.textContent = `${percentage}%`;
+        }
+
+        // Display car markers on the map
+        function displayCarMarkers(cars) {
+            cars.forEach(car => {
+                if (car.latitude && car.longitude) {
+                    if (!markers[car.id]) {
+                        markers[car.id] = L.marker([car.latitude, car.longitude])
+                            .addTo(map)
+                            .bindPopup(`<b>${car.name}</b><br>Coordinates: (${car.latitude}, ${car.longitude})`);
+                    } else {
+                        markers[car.id].setLatLng([car.latitude, car.longitude]);
+                    }
+                }
+            });
+        }
+
+        // Redirect to index.html with carId in query parameters
+        function showDetails(carId) {
+            window.location.href = `index.html?carId=${carId}`;
+        }
+
+        // Fetch car data on page load
+        fetchCarData();
     </script>
 
 </body>
