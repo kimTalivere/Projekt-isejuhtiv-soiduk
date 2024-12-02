@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Parameetrite Ajalugu</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        #fetch-history {
+            margin-top: 10px;
+            padding: 10px 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #fetch-history:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <script>
+        const API_BASE_URL = "http://127.0.0.1:5000/api";
+
+        // Mapping of parameter names to display icons and labels
+        const parameterDisplayIcons = {
+            'hazzard_lights': ' Ohutuled',
+            'high_beam': 'Kaugtuled',
+            'marker_lights': 'Gabariidituled',
+            'brake_lights': 'Pidurdustuli',
+            'door_status': 'Uks',
+            'current_velocity': 'Hetkene kiirus',
+            'driving_mode': 'Sõidurežiim',
+            'battery_percentage': 'Patarei protsent',
+            'gnss': 'Koordinaadid',
+        };
+
+        async function fetchParameterNames() {
+            const response = await fetch(`${API_BASE_URL}/parameter_names`);
+            const data = await response.json();
+            const parameterSelect = document.getElementById("parameter");
+            parameterSelect.innerHTML = ""; // Clear existing options
+
+            // Add the "--Vali--" option as the first item
+            const defaultOption = document.createElement("option");
+            defaultOption.value = "";
+            defaultOption.disabled = true;
+            defaultOption.selected = true;
+            defaultOption.innerHTML = "--Vali--";
+            parameterSelect.appendChild(defaultOption);
+
+            // Add the rest of the options
+            data.forEach(param => {
+                if (parameterDisplayIcons[param.name]) {
+                    const option = document.createElement("option");
+                    option.value = param.id;
+                    option.innerHTML = parameterDisplayIcons[param.name] || param.name;
+                    parameterSelect.appendChild(option);
+                }
+            });
+        }
+
+
+        async function fetchParameterHistory() {
+            const vehicleId = document.getElementById("vehicle-id").dataset.carId;  // Use carId stored in data attribute
+            const parameterId = document.getElementById("parameter").value;
+
+            if (!vehicleId || !parameterId) {
+                alert("Please select a vehicle and parameter.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/vehicle_parameters/${vehicleId}/${parameterId}/history`);
+                const data = await response.json();
+
+                const tableBody = document.getElementById("history-table-body");
+                tableBody.innerHTML = ""; // Clear existing rows
+
+                if (data.error) {
+                    tableBody.innerHTML = `<tr><td colspan="3">${data.error}</td></tr>`;
+                    return;
+                }
+
+                // Check if data is empty, if so show "Pole andmeid"
+                if (data.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="3">Pole andmeid</td></tr>`;
+                    return;
+                }
+
+                data.forEach(entry => {
+                    const [date, timeWithZone] = entry.timestamp.split('T'); // Split timestamp into date and time with timezone
+                    let dataDisplay;
+
+                    // Check if the data field is an object and handle GNSS formatting
+                    if (typeof entry.data === 'object' && entry.data !== null) {
+                        const { latitude, longitude } = entry.data;
+                        dataDisplay = `Laiuskraad: ${latitude.toFixed(6)}, Pikkuskraad: ${longitude.toFixed(6)}`;
+                    } else {
+                        dataDisplay = entry.data; // Use raw data for non-object values
+                    }
+
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${date}</td>
+                        <td>${timeWithZone}</td>
+                        <td>${dataDisplay}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Error fetching parameter history:", error);
+                alert("Failed to fetch parameter history. Please try again later.");
+            }
+        }
+
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Extract the carId and carName from the URL query parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const carId = urlParams.get("carId");
+            const carName = urlParams.get("carName");
+
+            // If carId and carName are present, display carName in the input and store carId in a data attribute
+            if (carId && carName) {
+                const vehicleIdInput = document.getElementById("vehicle-id");
+                vehicleIdInput.value = carName;  // Display car name in the input field
+                vehicleIdInput.dataset.carId = carId;  // Store carId as a data attribute for later use
+            } else {
+                document.getElementById("vehicle-id").placeholder = "Auto not found"; // Fallback message
+            }
+
+            await fetchParameterNames();
+            document.getElementById("fetch-history").addEventListener("click", fetchParameterHistory);
+        });
+    </script>
+</head>
+<body>
+    <button class="back-button" onclick="window.location.href='SelectCar.html'">Tagasi</button>
+    <h1>Auto Parameetrite Ajalugu</h1>
+    <div>
+        <label for="vehicle-id">Auto nimi:</label>
+        <input type="text" id="vehicle-id" placeholder="Valige auto ID" readonly>
+
+        <label for="parameter">Parameeter:</label>
+        <select id="parameter">
+            <option value="" disabled selected>--Vali--</option>
+        </select>
+
+
+        <button id="fetch-history">Otsi</button>
+    </div>
+
+    <h2>Parameetri Ajalugu</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Kuupäev</th>
+                <th>Aeg</th>
+                <th>Andmed</th>
+            </tr>
+        </thead>
+        <tbody id="history-table-body">
+            <tr><td colspan="3">Pole andmeid</td></tr>
+        </tbody>
+    </table>
+</body>
+</html>
