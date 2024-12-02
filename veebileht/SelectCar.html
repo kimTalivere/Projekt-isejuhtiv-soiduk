@@ -7,8 +7,6 @@
 
     <!-- Leaflet CSS for the map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Chart.js for battery doughnut charts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         /* Reset and full-screen setup */
@@ -92,8 +90,7 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
+            gap: 15px;
             transition: background-color 0.3s;
         }
 
@@ -105,6 +102,7 @@
             display: flex;
             flex-direction: column;
             align-items: flex-start;
+            flex: 7;
         }
 
         .car-title {
@@ -119,21 +117,69 @@
             color: #555;
         }
 
-        .chart-container {
-            width: 80px;
-            height: 80px;
+        .battery-icon {
             position: relative;
-            margin-left: 20px;
+            width: 80px;
+            height: 40px;
+            border: 2px solid #333;
+            border-radius: 5px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            margin: 0 auto;
         }
 
-        .chart-container .chart-label {
+        .battery-icon::before {
+            content: '';
+            position: absolute;
+            left: -10px;
+            width: 6px;
+            height: 20px;
+            background: #333;
+            border-radius: 2px;
+        }
+
+        .battery-level {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: #4caf50;
+            transition: width 0.5s ease;
+        }
+
+        .battery-label {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 1vw;
+            font-size: 0.9em;
             font-weight: bold;
             color: #333;
+        }
+
+        .history-container {
+            background-color: #d3d3d3; /* Light gray background */
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 3;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .history-container:hover {
+            background-color: #c0c0c0; /* Slightly darker gray on hover */
+        }
+
+        .history-label {
+            font-size: 1.2vw;
+            color: #4caf50;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -170,138 +216,145 @@
 
         const markers = {};
 
-        // Fetch car data from the backend and populate the car info boxes
-        function fetchCarData() {
-            fetch('http://127.0.0.1:5000/api/cars')
+        // Fetch battery level from the backend for a specific vehicle
+        function fetchBatteryPercentage(vehicleId) {
+            fetch(`http://127.0.0.1:5000/api/vehicle_parameters/${vehicleId}/33`)
                 .then(response => response.json())
-                .then(cars => {
+                .then(data => {
+                    const batteryLevel = data && data.data ? parseFloat(data.data) : 0;
+                    const batteryDiv = document.getElementById(`batteryLevel${vehicleId}`);
+                    const batteryLabel = document.getElementById(`batteryLabel${vehicleId}`);
+                    batteryDiv.style.width = `${batteryLevel}%`;
+                    batteryLabel.textContent = `${batteryLevel}%`;
+                })
+                .catch(error => console.error('Error fetching battery percentage:', error));
+        }
+
+        // Fetch vehicle data from the backend and populate the car info boxes
+        function fetchCarData() {
+            fetch('http://127.0.0.1:5000/api/vehicles')
+                .then(response => response.json())
+                .then(vehicles => {
+                    const uniqueCars = vehicles.reduce((acc, current) => {
+                        if (!acc.some(car => car.vehicle_id === current.vehicle_id)) {
+                            acc.push(current);
+                        }
+                        return acc;
+                    }, []);
+
+                    const cars = uniqueCars.map(vehicle => ({
+                        id: vehicle.vehicle_id,
+                        name: vehicle.vehicle_name,
+                        latitude: vehicle.latitude || 0,
+                        longitude: vehicle.longitude || 0,
+                        in_motion: false,
+                        velocity: null
+                    }));
+
                     populateCarInfo(cars);
                     displayCarMarkers(cars);
                 })
-                .catch(error => console.error("Error fetching car data:", error));
+                .catch(error => console.error("Error fetching vehicle data:", error));
         }
 
-        // Fetch battery level from the backend for a specific car
-        function fetchBatteryPercentage(vehicleId, chartLabel) {
-            fetch(`http://127.0.0.1:5000/api/battery_percentage?vehicle_id=${vehicleId}`)
-                .then(response => response.json())
-                .then(data => {
-                    const batteryLevel = data && data.parameter_value ? parseFloat(data.parameter_value) : 0;
-                    updateBatteryChart(chartLabel, batteryLevel);
-                })
-                .catch(error => console.error("Error fetching battery data:", error));
-        }
-
-        // Populate the car info boxes
         function populateCarInfo(cars) {
-            const carList = document.getElementById('carList');
-            carList.innerHTML = ''; // Clear existing content
+    const carList = document.getElementById('carList');
+    carList.innerHTML = '';
 
-            cars.forEach((car, index) => {
-                const carInfoDiv = document.createElement('div');
-                carInfoDiv.className = 'car-info';
-                carInfoDiv.onclick = () => showDetails(car.id);
+    cars.forEach((car) => {
+        const carInfoDiv = document.createElement('div');
+        carInfoDiv.className = 'car-info';
+        carInfoDiv.onclick = () => showDetails(car.id);
 
-                const carDetailsDiv = document.createElement('div');
-                carDetailsDiv.className = 'car-details';
+        // Create car details dynamically
+        const carDetails = [
+            { label: 'Nimi', value: car.name },
+            { label: 'Koordinaadid', value: `${car.latitude.toFixed(6)}, ${car.longitude.toFixed(6)}` },
+            { label: 'Liikvel', value: car.in_motion ? 'Yes' : 'No' },
+            { label: 'Kiirus', value: car.velocity || 'N/A' }
+        ];
 
-                const carTitle = document.createElement('p');
-                carTitle.className = 'car-title';
-                carTitle.textContent = car.name;
+        const carDetailsDiv = document.createElement('div');
+        carDetailsDiv.className = 'car-details';
 
-                const carAddress = document.createElement('p');
-                carAddress.className = 'info-item';
-                carAddress.textContent = `Address: ${car.latitude}, ${car.longitude}`;
+        carDetails.forEach(detail => {
+            const detailElement = document.createElement('p');
+            detailElement.className = 'info-item';
+            detailElement.textContent = `${detail.label}: ${detail.value}`;
+            carDetailsDiv.appendChild(detailElement);
+        });
 
-                const carMotion = document.createElement('p');
-                carMotion.className = 'info-item';
-                carMotion.textContent = `In Motion: ${car.in_motion ? 'Yes' : 'No'}`;
+        // Create the battery icon
+        const batteryIcon = document.createElement('div');
+        batteryIcon.className = 'battery-icon';
+        batteryIcon.innerHTML = `
+            <div class="battery-level" id="batteryLevel${car.id}"></div>
+            <div class="battery-label" id="batteryLabel${car.id}">0%</div>
+        `;
 
-                const carVelocity = document.createElement('p');
-                carVelocity.className = 'info-item';
-                carVelocity.textContent = `Velocity: ${car.velocity || 'N/A'} km/h`;
+        // Create the history button
+        const historyContainer = document.createElement('div');
+        historyContainer.className = 'history-container';
+        historyContainer.onclick = (e) => {
+            e.stopPropagation();
+            window.location.href = `history.html?carId=${car.id}&carName=${encodeURIComponent(car.name)}`;
+        };
+        historyContainer.innerHTML = `<div class="history-label">Ajalugu</div>`;
 
-                carDetailsDiv.appendChild(carTitle);
-                carDetailsDiv.appendChild(carAddress);
-                carDetailsDiv.appendChild(carMotion);
-                carDetailsDiv.appendChild(carVelocity);
+        // Append all elements
+        carInfoDiv.appendChild(carDetailsDiv);
+        carInfoDiv.appendChild(batteryIcon);
+        carInfoDiv.appendChild(historyContainer);
+        carList.appendChild(carInfoDiv);
 
-                const chartContainer = document.createElement('div');
-                chartContainer.className = 'chart-container';
+        // Fetch battery percentage
+        fetchBatteryPercentage(car.id);
+    });
+}
 
-                const canvas = document.createElement('canvas');
-                canvas.id = `batteryChart${index + 1}`;
-                chartContainer.appendChild(canvas);
-
-                const chartLabel = document.createElement('div');
-                chartLabel.className = 'chart-label';
-                chartLabel.id = `batteryLabel${index + 1}`;
-                chartLabel.textContent = "0%";
-                chartContainer.appendChild(chartLabel);
-
-                carInfoDiv.appendChild(carDetailsDiv);
-                carInfoDiv.appendChild(chartContainer);
-                carList.appendChild(carInfoDiv);
-
-                initBatteryChart(canvas, chartLabel, 0); // Initialize chart with 0%
-
-                // Fetch battery percentage for each car and update label and chart
-                fetchBatteryPercentage(car.id, chartLabel);
-            });
-        }
-
-        // Initialize a battery chart
-        function initBatteryChart(canvas, label, percentage) {
-            const ctx = canvas.getContext('2d');
-            const batteryChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    datasets: [{
-                        label: 'Battery Level (%)',
-                        data: [percentage, 100 - percentage],
-                        backgroundColor: ['rgba(75, 192, 192, 1)', 'rgba(201, 203, 207, 0.2)'],
-                        borderColor: ['rgba(75, 192, 192, 1)', 'rgba(201, 203, 207, 1)'],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { enabled: false }
-                    }
-                }
-            });
-            label.textContent = `${percentage}%`;
-            return batteryChart;
-        }
-
-        // Update the battery chart and label
-        function updateBatteryChart(label, percentage) {
-            const canvas = label.previousElementSibling;
-            const ctx = canvas.getContext('2d');
-            const batteryChart = Chart.getChart(ctx);
-            if (batteryChart) {
-                batteryChart.data.datasets[0].data = [percentage, 100 - percentage];
-                batteryChart.update();
-            }
-            label.textContent = `${percentage}%`;
-        }
 
         // Display car markers on the map
         function displayCarMarkers(cars) {
-            cars.forEach(car => {
-                if (car.latitude && car.longitude) {
-                    if (!markers[car.id]) {
-                        markers[car.id] = L.marker([car.latitude, car.longitude])
-                            .addTo(map)
-                            .bindPopup(`<b>${car.name}</b><br>Coordinates: (${car.latitude}, ${car.longitude})`);
-                    } else {
-                        markers[car.id].setLatLng([car.latitude, car.longitude]);
-                    }
-                }
-            });
+        const defaultPingImage = 'images/mapPing.png'; // Fallback image
+
+    cars.forEach((car, index) => {
+        const dynamicImage = `images/mapPing${index + 1}.png`; // Dynamically generate image name (mapPing1, mapPing2, etc.)
+
+        // Create a new Image object to verify if the image exists
+        const img = new Image();
+        img.src = dynamicImage;
+
+        img.onload = () => {
+            // If the dynamically generated image exists, use it
+            addMarker(car, dynamicImage);
+        };
+
+        img.onerror = () => {
+            // If the image fails to load, use the default image
+            addMarker(car, defaultPingImage);
+        };
+    });
+
+    function addMarker(car, iconUrl) {
+        const carIcon = L.icon({
+            iconUrl: iconUrl,
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+            popupAnchor: [0, -40],
+        });
+
+        if (car.latitude && car.longitude) {
+            if (!markers[car.id]) {
+                markers[car.id] = L.marker([car.latitude, car.longitude], { icon: carIcon })
+                    .addTo(map)
+                    .bindPopup(`<b>${car.name}</b><br>Coordinates: (${car.latitude.toFixed(6)}, ${car.longitude.toFixed(6)})`);
+            } else {
+                markers[car.id].setLatLng([car.latitude, car.longitude]);
+            }
         }
+    }
+}
+
 
         // Redirect to index.html with carId in query parameters
         function showDetails(carId) {

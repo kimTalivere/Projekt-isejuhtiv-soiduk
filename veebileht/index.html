@@ -12,15 +12,123 @@
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .battery-icon {
+            position: relative;
+            width: 120px;
+            height: 60px;
+            border: 3px solid #333;
+            border-radius: 15px;
+            margin: 10px 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        .battery-icon::before {
+            content: '';
+            position: absolute;
+            left: -25px;
+            width: 10px;
+            height: 30px;
+            background: #333;
+            border-radius: 2px;
+        }
+
+        .battery-level {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: #4caf50;
+            transition: width 0.5s ease;
+        }
+
+        .battery-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+            padding-left: 50px; /* Existing padding */
+            /*  width: 300px; /* Set the desired width */
+            max-width: 50%; /* Optionally use percentage for responsiveness */
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+            padding-left: 50px; /* Existing padding */
+            /*  width: 300px; /* Set the desired width */
+            max-width: 50%; /* Optionally use percentage for responsiveness */
+        }
+
+        .fas {
+            color: #4caf50; /* Change icon color to green */
+            margin-right: 10px; /* Space between icon and text */
+        }
+
+        .slider-container {
+            margin-top: 20px;
+            width: 80%;
+        }
+
+        #historySlider {
+            width: 100%;
+        }
+
+        .camera-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .camera-image {
+            width: 320px;
+            height: 240px;
+            border: 2px solid #333;
+            border-radius: 10px;
+            background-color: #eee;
+            object-fit: cover;
+            margin-bottom: 20px;
+        }
+
+        
+    </style>
 </head>
 <body>
 
     <section>
-        <img id="carImage" src="images/UleminePilt.png" alt="Auto Pilt" />
+        <!-- <img id="carImage" src="images/UleminePilt.png" alt="Auto Pilt" /> -->
 
         <div class="container">
+            <!-- Back button to return to the main page -->
+            
+
             <!-- Left panel for car information -->
             <div class="left-panel">
+                <!-- Battery icon representation -->
+                <div class="camera-panel">
+                    <img id="cameraFront" class="camera-image" alt="Front Camera View">
+                </div>
+                
+                
+
                 <!-- Car information will appear here -->
                 <div id="carInfo">
                     <h3>Auto Parameetrid</h3>
@@ -29,22 +137,36 @@
                     <p id="batteryInfo"></p>
                 </div>
 
-                <div id="batteryChartContainer" style="position: relative; width: 100px; height: 100px;">
-                    <canvas id="batteryChart" width="100" height="100"></canvas>
-                    <div id="batteryLabel" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.2em; font-weight: bold; color: #333;"></div>
+                <div class="battery-icon">
+                    <div class="battery-level" id="batteryLevel"></div>
+                    <div class="battery-label" id="batteryLabel">0%</div>
                 </div>
+
                 <div id="dynamicParameters">
                     <!-- Parameters will be injected here -->
                 </div>
                 
+                <div>
+                <button class="back-button" style="position: absolute; bottom: 20px; left: 20px; font-size: 0.8em; padding: 5px 10px;" onclick="window.location.href='SelectCar.html'">Tagasi</button>
+                </div>
+
             </div>
 
             <!-- Right panel for the map -->
             <div class="right-panel">
+                <div class="camera-panel">
+                    <img id="cameraBack" class="camera-image" alt="Back Camera View">
+                </div>
                 <div id="map"></div> <!-- Map container -->
+                <!-- Slider to control car history movement -->
+                <div class="slider-container">
+                    <input type="range" min="0" max="100" value="0" id="historySlider">
+                </div>
                 <!-- "Back to Car" button under the map -->
-                <button class="back-to-car-button" onclick="flyToCarLocation()">Back to Car</button>
+                <button class="back-to-car-button" onclick="flyToCarLocation()">Tagasi auto juurde</button>
             </div>
+
+            
         </div>
     </section>
 
@@ -63,14 +185,24 @@
             const markers = {}; // Object to hold markers
             const carId = getQueryParams().carId;
             let carLocation = null; // Store car location for flying back
+            let routeData = []; // Store historical route data
+            let carMarker = null;
 
             // Initialize the map and set the initial view
             var map = L.map('map').setView([59.395720, 24.672221], 13);
 
             // Add OpenStreetMap tiles to the map
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
+                attribution: 'Â© OpenStreetMap contributors'
             }).addTo(map);
+
+            // Define the custom car icon
+            const carIcon = L.icon({
+                iconUrl: 'images/mapPing.png', // Use the provided car icon image
+                iconSize: [40, 40], // Adjust the size of the icon (width, height)
+                iconAnchor: [20, 40], // The point of the icon which will correspond to the marker's location
+                popupAnchor: [0, -40] // The point from which the popup should open relative to the iconAnchor
+            });
 
             if (!carId) {
                 alert('No car selected. Please go back to select a car.');
@@ -81,27 +213,29 @@
             fetchCarData();
             fetchBatteryPercentage();
             fetchVehicleParameters(carId);
+            fetchVehicleRoute(carId);
+            fetchCameraImages(carId);
 
             // Function to fetch car data
             function fetchCarData() {
-                fetch('http://127.0.0.1:5000/api/cars')
+                fetch('http://127.0.0.1:5000/api/vehicles')
                     .then(response => response.json())
                     .then(data => {
-                        const car = data.find(c => c.id == carId); // Find the selected car
+                        const car = data.find(c => c.vehicle_id == carId); // Find the selected car
                         if (car) {
-                            const { name, latitude, longitude } = car;
+                            const { vehicle_name, latitude, longitude } = car;
                             carLocation = [latitude, longitude]; // Store car location
 
                             // Show car info
-                            document.getElementById('carName').textContent = `Auto Nimi: ${name}`;
-                            document.getElementById('coordinates').textContent = `Koordinaadid: (${latitude}, ${longitude})`;
+                            document.getElementById('carName').textContent = `Auto Nimi: ${vehicle_name}`;
+                            document.getElementById('coordinates').textContent = `Koordinaadid: (${latitude.toFixed(6)}, ${longitude.toFixed(6) })`;
 
-                            // Update or add a marker for the car's location
+                            // Update or add a marker for the car's location with the car icon
                             if (!markers[carId]) {
-                                markers[carId] = L.marker([latitude, longitude]).addTo(map)
-                                    .bindPopup(`<b>${name}</b><br>Koordinaadid: (${latitude}, ${longitude})`).openPopup();
+                                carMarker = L.marker([latitude, longitude], { icon: carIcon }).addTo(map)
+                                    .bindPopup(`<b>${vehicle_name}</b><br>Koordinaadid: (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`).openPopup();
                             } else {
-                                markers[carId].setLatLng([latitude, longitude]); // Update marker position
+                                carMarker.setLatLng([latitude, longitude]); // Update marker position
                             }
                         } else {
                             alert('Car not found.');
@@ -122,17 +256,14 @@
                 }
             }
 
-            // Function to fetch battery percentage and update the chart
+            // Function to fetch battery percentage and update the battery icon
             function fetchBatteryPercentage() {
-                fetch(`http://127.0.0.1:5000/api/battery_percentage?vehicle_id=${carId}`)
+                fetch(`http://127.0.0.1:5000/api/vehicle_parameters/${carId}/33`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.parameter_name && data.parameter_value) {
-                        const batteryValue = parseFloat(data.parameter_value);
-
-                        // Update chart labels and data
-                        batteryChart.data.labels = [`Aku: ${batteryValue} %`];
-                        updateBatteryChart(batteryValue);  // Update the chart with the fetched value
+                    if (data.data) {
+                        const batteryValue = parseFloat(data.data);
+                        updateBatteryIcon(batteryValue);  // Update the battery icon with the fetched value
                     } else {
                         document.getElementById('batteryInfo').textContent = "Battery information not available.";
                     }
@@ -140,36 +271,52 @@
                 .catch(error => console.error('Error fetching battery percentage:', error));
             }
 
-            // Initialize the battery doughnut chart
-            const ctx = document.getElementById('batteryChart').getContext('2d');
-            const batteryChart = new Chart(ctx, {
-                type: 'doughnut', // Use doughnut chart
-                data: {
-                    datasets: [{
-                        label: 'Battery Level (%)',
-                        data: [0, 100], // Initialize with zero and 100
-                        backgroundColor: ['rgba(75, 192, 192, 1)', 'rgba(201, 203, 207, 0.2)'],
-                        borderColor: ['rgba(75, 192, 192, 1)', 'rgba(201, 203, 207, 1)'],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { enabled: false }
+            // Function to update the battery icon
+            function updateBatteryIcon(value) {
+                const batteryLevel = document.getElementById('batteryLevel');
+                const batteryLabel = document.getElementById('batteryLabel');
+
+                // Update battery level width and label
+                batteryLevel.style.width = `${value}%`;
+                batteryLabel.textContent = `${value}%`;
+            }
+
+            // Function to fetch vehicle route history
+            function fetchVehicleRoute(vehicleId) {
+                fetch(`http://127.0.0.1:5000/api/vehicle_route/${vehicleId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length > 0) {
+                            routeData = data;
+                            drawRoute(routeData);
+                            setupSlider(routeData);
+                        } else {
+                            console.error('No route data found.');
+                        }
+                    })
+                    .catch(error => console.error('Error fetching route data:', error));
+            }
+
+            // Function to draw the route on the map
+            function drawRoute(routeData) {
+                const latlngs = routeData.map(point => [point.latitude, point.longitude]);
+                const polyline = L.polyline(latlngs, { color: 'blue' }).addTo(map);
+                map.fitBounds(polyline.getBounds());
+            }
+
+            // Function to setup the slider for route playback
+            function setupSlider(routeData) {
+                const historySlider = document.getElementById('historySlider');
+                historySlider.max = routeData.length - 1;
+
+                historySlider.addEventListener('input', function() {
+                    const index = parseInt(historySlider.value);
+                    const point = routeData[index];
+                    if (carMarker) {
+                        carMarker.setLatLng([point.latitude, point.longitude]);
+                        map.panTo([point.latitude, point.longitude]);
                     }
-                }
-            });
-
-            // Function to update the battery chart
-            function updateBatteryChart(value) {
-                batteryChart.data.datasets[0].data[0] = value; // Update battery level
-                batteryChart.data.datasets[0].data[1] = 100 - value; // Update remaining percentage
-                batteryChart.update(); // Refresh the chart
-
-                // Update the label inside the chart
-                document.getElementById('batteryLabel').textContent = `${value}%`;
+                });
             }
 
             // Function to fetch vehicle parameters and update dynamic info
@@ -186,100 +333,93 @@
                 }
             }
 
-            const parameterDisplayNames = {
-                'hazzard_lights': 'Ohutuled',
-                'high_beam': 'Kaugtuled',
-                'marker_lights': 'Gabariidituled',
-                'brake_light': 'Pidurdustuli',
-                'door_status': 'Uks',
-                'current_velocity': 'Hetkene kiirus',
-                'driving_mode': 'Sõidurežiim',
+            const parameterDisplayIcons = {
+                'hazzard_lights': '<i class="fas fa-exclamation-triangle"></i> Ohutuled',
+                'high_beam': '<i class="fas fa-lightbulb"></i> Kaugtuled',
+                'marker_lights': '<i class="fas fa-lightbulb"></i> Gabariidituled',
+                'brake_lights': '<i class="fas fa-hand-paper"></i> Pidurdustuli',
+                'door_status': '<i class="fas fa-door-open"></i> Uks',
+                'current_velocity': '<i class="fas fa-tachometer-alt"></i> Hetkene kiirus',
+                'driving_mode': '<i class="fas fa-car"></i> Sõidurežiim',
             };
 
-            const selectedParameterNames = ['hazzard_lights', 'high_beam', 'marker_lights', 'brake_light', 'door_status', 'current_velocity', 'driving_mode'];
+            const selectedParameterNames = ['hazzard_lights', 'high_beam', 'marker_lights', 'brake_lights', 'door_status', 'current_velocity', 'driving_mode'];
 
             function updateParameters(parameters) {
                 const dynamicParametersDiv = document.getElementById('dynamicParameters');
-                dynamicParametersDiv.innerHTML = '<h3> </h3>';
+                dynamicParametersDiv.innerHTML = ''; // Clear previous parameters
 
+                // Track the latest value for each parameter
+                const latestParams = {};
+
+                // Iterate over the parameters to store the latest for each name
                 parameters.forEach(param => {
                     if (selectedParameterNames.includes(param.name)) {
-                        let valueText;
-
-                        if (param.unit === "std_msgs::Bool") {
-                            valueText = param.value === "1" ? "On" : "Off";
-                        } else if (param.name === 'door_status') {
-                            valueText = param.value !== null ? (param.value === 0 ? 'Suletud' : 'Avatud') : 'N/A';
-                        } else if (param.value !== null) {
-                            valueText = param.value;
-                        } else {
-                            valueText = "N/A";
+                        // Check if the parameter has a timestamp, and if so, compare
+                        if (!latestParams[param.name] || new Date(param.timestamp) > new Date(latestParams[param.name].timestamp)) {
+                            latestParams[param.name] = param;
                         }
-
-                        const displayName = parameterDisplayNames[param.name] || param.name.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
-
-                        const paramElement = document.createElement('p');
-                        paramElement.textContent = `${displayName}: ${valueText}`;
-                        dynamicParametersDiv.appendChild(paramElement);
                     }
                 });
+
+                // Display only the most recent values for each parameter
+                for (const paramName of selectedParameterNames) {
+                    const param = latestParams[paramName];
+
+                    let valueText;
+
+                    // If no data for the parameter, display "No info"
+                    if (!param || param.data === null || param.data === undefined) {
+                        valueText = "No info";
+                    } else if (param.data === "1") {
+                        valueText = "On";
+                    } else if (param.data === "0") {
+                        valueText = "Off";
+                    } else if (param.name === 'door_status') {
+                        valueText = param.data === 0 ? 'Suletud' : 'Avatud';
+                    } else if (param.name === 'brake_lights') {
+                        valueText = param.data === false ? 'Ei põle' : 'Põleb';
+                    } else {
+                        valueText = param.data;
+                    }
+
+                    const displayName = parameterDisplayIcons[paramName] || paramName.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+
+                    const paramElement = document.createElement('p');
+                    paramElement.innerHTML = `${displayName}: ${valueText}`;
+                    dynamicParametersDiv.appendChild(paramElement);
+                }
             }
 
+            // Function to fetch camera images and update the display
+            function fetchCameraImages(vehicleId) {
+                fetch(`http://127.0.0.1:5000/api/vehicle_cameras/${vehicleId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.camera_front) {
+                            document.getElementById('cameraFront').src = '\static' + data.camera_front;
+                        }
+                        if (data.camera_back) {
+                            document.getElementById('cameraBack').src = '\static' + data.camera_back;
+                        }
+                    })
+                    .catch(error => console.error('Error fetching camera images:', error));
+            }
+
+
+
+
+
+
+            // Call this to update parameters dynamically
             setInterval(() => {
-                fetchCarData();
-                fetchBatteryPercentage();
                 fetchVehicleParameters(carId);
-            }, 5000);
+                fetchCameraImages(carId);
+            }, 5000); // Update every 5 seconds
+
+            document.querySelector('.back-to-car-button').addEventListener('click', flyToCarLocation);
         });
     </script>
 
-    <!-- Back Button -->
-    <button class="back-button" onclick="goBack()">
-        ← <span>Back</span>
-    </button>
-
-    <script>
-        function goBack() {
-            window.location.href = 'SelectCar.html';
-        }
-    </script>
-
-    <style>
-        .back-button {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background-color: #ffffff;
-            border: none;
-            font-size: 1.5em;
-            color: #333;
-            cursor: pointer;
-            padding: 5px 10px;
-            border-radius: 5px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-        }
-        .back-button:hover {
-            background-color: #f0f0f0;
-        }
-        .back-button span {
-            margin-left: 5px;
-            font-size: 1em;
-        }
-        .back-to-car-button {
-            margin-top: 10px;
-            padding: 8px 15px;
-            font-size: 1em;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .back-to-car-button:hover {
-            background-color: #45a049;
-        }
-    </style>
 </body>
 </html>

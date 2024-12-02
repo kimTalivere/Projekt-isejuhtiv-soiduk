@@ -6,7 +6,7 @@ db_params = {
     'dbname': 'auto',  # replace with your database name
     'user': 'postgres',          # replace with your username
     'password': 'password',      # replace with your password
-    'host': '37.157.64.223',              # or your host
+    'host': 'localhost',              # or your host
     'port': '5432'                    # or your port
 }
 
