@@ -15,6 +15,55 @@
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .camera-panel {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .camera-image {
+            width: 100%;
+            max-width: 530px;
+            height: auto;
+            border: 2px solid #333;
+            border-radius: 10px;
+            background-color: #eee;
+            object-fit: cover;
+            margin-bottom: 20px;
+        }
+
+        .left-right-panels {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1200px;
+            margin-top: 20px;
+            gap: 20px; /* Space between panels */
+        }
+
+        .left-panel, .right-panel {
+            flex: 1;
+            min-width: 280px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
         .battery-icon {
             position: relative;
             width: 120px;
@@ -57,31 +106,6 @@
             color: #333;
         }
 
-        .left-panel {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 10px;
-            padding-left: 50px; /* Existing padding */
-            /*  width: 300px; /* Set the desired width */
-            max-width: 50%; /* Optionally use percentage for responsiveness */
-        }
-
-        .right-panel {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 10px;
-            padding-left: 50px; /* Existing padding */
-            /*  width: 300px; /* Set the desired width */
-            max-width: 50%; /* Optionally use percentage for responsiveness */
-        }
-
-        .fas {
-            color: #4caf50; /* Change icon color to green */
-            margin-right: 10px; /* Space between icon and text */
-        }
-
         .slider-container {
             margin-top: 20px;
             width: 80%;
@@ -91,82 +115,113 @@
             width: 100%;
         }
 
-        .camera-panel {
+        .right-panel {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            margin-top: 20px;
+            gap: 10px;
         }
 
-        .camera-image {
-            width: 320px;
-            height: 240px;
-            border: 2px solid #333;
-            border-radius: 10px;
-            background-color: #eee;
-            object-fit: cover;
-            margin-bottom: 20px;
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-left: 50px;
         }
 
-        
+        .fas {
+            color: #4caf50; /* Change icon color to green */
+            margin-right: 10px; /* Space between icon and text */
+        }
+
+        .back-button {
+            position: absolute;
+            top: 20px; /* Adjust the value for vertical position */
+            left: 20px; /* Adjust the value for horizontal position */
+            font-size: 0.8em;
+            padding: 5px 10px;
+            z-index: 10; /* Ensures it's above other content */
+        }
+
+        /* Media Queries for responsiveness */
+        @media (max-width: 768px) {
+            .camera-image {
+                max-width: 100%;
+            }
+
+            .left-right-panels {
+                flex-direction: column; /* Stack the panels on smaller screens */
+                width: 100%;
+            }
+
+            .left-panel, .right-panel {
+                width: 100%; /* Each panel takes full width on small screens */
+            }
+
+            .camera-panel {
+                flex-direction: column; /* Stack cameras vertically on smaller screens */
+            }
+        }
+
+        @media (max-width: 480px) {
+            .left-panel, .right-panel {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+
+            .back-button {
+                top: 10px; /* Adjust position for smaller screens */
+                left: 10px;
+            }
+        }
+
+
+
     </style>
 </head>
 <body>
-
+    <div>
+        <button class="back-button" onclick="window.location.href='SelectCar.html'">Tagasi</button>
+    </div>
     <section>
-        <!-- <img id="carImage" src="images/UleminePilt.png" alt="Auto Pilt" /> -->
-
         <div class="container">
-            <!-- Back button to return to the main page -->
             
+            <!-- Camera images at the top -->
+            <div class="camera-panel">
+                <img id="cameraFront" class="camera-image" alt="Front Camera View">
+                <img id="cameraBack" class="camera-image" alt="Back Camera View">
+            </div>
 
-            <!-- Left panel for car information -->
-            <div class="left-panel">
-                <!-- Battery icon representation -->
-                <div class="camera-panel">
-                    <img id="cameraFront" class="camera-image" alt="Front Camera View">
-                </div>
-                
-                
-
-                <!-- Car information will appear here -->
-                <div id="carInfo">
+            <!-- Left and Right Panels below the camera images -->
+            <div class="left-right-panels">
+                <!-- Left panel for car information -->
+                <div class="left-panel">
                     <h3>Auto Parameetrid</h3>
                     <p id="carName">Auto Nimi:</p>
                     <p id="coordinates">Koordinaadid: </p>
                     <p id="batteryInfo"></p>
+
+                    <div class="battery-icon">
+                        <div class="battery-level" id="batteryLevel"></div>
+                        <div class="battery-label" id="batteryLabel">0%</div>
+                    </div>
+
+                    <div id="dynamicParameters">
+                        <!-- Parameters will be injected here -->
+                    </div>
+
+                    
                 </div>
 
-                <div class="battery-icon">
-                    <div class="battery-level" id="batteryLevel"></div>
-                    <div class="battery-label" id="batteryLabel">0%</div>
-                </div>
+                <!-- Right panel for the map -->
+                <div class="right-panel">
+                    <div id="map"></div> <!-- Map container -->
 
-                <div id="dynamicParameters">
-                    <!-- Parameters will be injected here -->
+                    <div class="slider-container">
+                        <input type="range" min="0" max="100" value="0" id="historySlider">
+                    </div>
+                    <button class="back-to-car-button" onclick="flyToCarLocation()">Tagasi auto juurde</button>
                 </div>
-                
-                <div>
-                <button class="back-button" style="position: absolute; bottom: 20px; left: 20px; font-size: 0.8em; padding: 5px 10px;" onclick="window.location.href='SelectCar.html'">Tagasi</button>
-                </div>
-
             </div>
-
-            <!-- Right panel for the map -->
-            <div class="right-panel">
-                <div class="camera-panel">
-                    <img id="cameraBack" class="camera-image" alt="Back Camera View">
-                </div>
-                <div id="map"></div> <!-- Map container -->
-                <!-- Slider to control car history movement -->
-                <div class="slider-container">
-                    <input type="range" min="0" max="100" value="0" id="historySlider">
-                </div>
-                <!-- "Back to Car" button under the map -->
-                <button class="back-to-car-button" onclick="flyToCarLocation()">Tagasi auto juurde</button>
-            </div>
-
-            
         </div>
     </section>
 
