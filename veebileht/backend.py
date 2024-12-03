@@ -64,7 +64,7 @@ def fetch_all_parameters(vehicle_id):
         if conn:
             conn.close()
 
-# Route to fetch all vehicles with latitude and longitude from v_log
+# Route to fetch all vehicles with latitude, longitude, and current_velocity from v_log
 @app.route('/api/vehicles', methods=['GET'])
 def get_vehicles():
     conn = None
@@ -72,16 +72,21 @@ def get_vehicles():
         conn = psycopg2.connect(**db_params)
         cursor = conn.cursor()
 
-        # Query to fetch vehicle data along with GNSS information from v_log
+        # Query to fetch vehicle data along with GNSS information and velocity from v_log
         query = """
-            SELECT v.vehicle_id AS vehicle_id, 
-                   v.vehicle_name AS vehicle_name, 
-                   jl.jason_data->>'latitude' AS latitude, 
-                   jl.jason_data->>'longitude' AS longitude
+                SELECT DISTINCT ON (v.vehicle_id) 
+                v.vehicle_id AS vehicle_id, 
+                v.vehicle_name AS vehicle_name, 
+                jl_lat.jason_data->>'latitude' AS latitude, 
+                jl_lat.jason_data->>'longitude' AS longitude,
+                (jl_vel.jason_data::text)::numeric AS velocity -- First cast to text, then to numeric
             FROM vehicle v
-            JOIN v_log jl ON v.vehicle_id = jl.vehicle_id
-            WHERE jl.parameter_id = 74
-            ORDER BY jl.recorded_time DESC;
+            LEFT JOIN v_log jl_lat 
+                ON v.vehicle_id = jl_lat.vehicle_id AND jl_lat.parameter_id = 74
+            LEFT JOIN v_log jl_vel 
+                ON v.vehicle_id = jl_vel.vehicle_id AND jl_vel.parameter_id = 63
+            ORDER BY v.vehicle_id, jl_lat.recorded_time DESC, jl_vel.recorded_time DESC;
+
         """
         cursor.execute(query)
         results = cursor.fetchall()
@@ -92,7 +97,8 @@ def get_vehicles():
                 'vehicle_id': row[0],
                 'vehicle_name': row[1],
                 'latitude': float(row[2]) if row[2] else None,
-                'longitude': float(row[3]) if row[3] else None
+                'longitude': float(row[3]) if row[3] else None,
+                'current_velocity': float(row[4]) if row[4] else None
             } for row in results
         ]
 
