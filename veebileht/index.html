@@ -8,13 +8,124 @@
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="styles.css"> <!-- Link to your CSS file -->
+    <link rel="stylesheet" href="styles.css"> 
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
+    <style>
+        .battery-icon {
+            position: relative;
+            width: 120px;
+            height: 60px;
+            border: 3px solid #333;
+            border-radius: 15px;
+            margin: 10px 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        .battery-icon::before {
+            content: '';
+            position: absolute;
+            left: -25px;
+            width: 10px;
+            height: 30px;
+            background: #333;
+            border-radius: 2px;
+        }
+
+        .battery-level {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: #4caf50;
+            transition: width 0.5s ease;
+        }
+
+        .battery-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+            padding-left: 50px;
+            max-width: 50%;
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+            padding-left: 50px;
+            max-width: 50%;
+        }
+
+        .fas {
+            color: #4caf50;
+            margin-right: 10px;
+        }
+
+        .camera-panel {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .camera-image {
+            width: 320px;
+            height: 240px;
+            border: 2px solid #333;
+            border-radius: 10px;
+            background-color: #eee;
+            object-fit: cover;
+        }
+
+        .left-right-panels {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .slider-container {
+            margin-top: 20px;
+            width: 80%;
+        }
+
+        #historySlider {
+            width: 100%;
+        }
+
+        .back-button {
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            font-size: 0.8em; 
+            padding: 5px 10px;
+        }
+
+        .back-to-car-button {
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
     <div>
@@ -67,34 +178,29 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // Function to get query parameters from the URL
             function getQueryParams() {
                 const urlParams = new URLSearchParams(window.location.search);
-                return {
-                    carId: urlParams.get('carId')
-                };
+                return { carId: urlParams.get('carId') };
             }
 
-            const markers = {}; // Object to hold markers
+            const markers = {}; 
             const carId = getQueryParams().carId;
-            let carLocation = null; // Store car location for flying back
-            let routeData = []; // Store historical route data
+            let carLocation = null; 
+            let routeData = []; 
             let carMarker = null;
+            let polyline = null;
 
-            // Initialize the map and set the initial view
             var map = L.map('map').setView([59.395720, 24.672221], 13);
 
-            // Add OpenStreetMap tiles to the map
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: 'Â© OpenStreetMap contributors'
+                attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
-            // Define the custom car icon
             const carIcon = L.icon({
-                iconUrl: 'images/mapPing.png', // Use the provided car icon image
-                iconSize: [40, 40], // Adjust the size of the icon (width, height)
-                iconAnchor: [20, 40], // The point of the icon which will correspond to the marker's location
-                popupAnchor: [0, -40] // The point from which the popup should open relative to the iconAnchor
+                iconUrl: 'images/mapPing.png',
+                iconSize: [40, 40],
+                iconAnchor: [20, 40],
+                popupAnchor: [0, -40]
             });
 
             if (!carId) {
@@ -102,42 +208,45 @@
                 return;
             }
 
-            // Initial data fetch
-            fetchCarData();
-            fetchBatteryPercentage();
-            fetchVehicleParameters(carId);
-            fetchVehicleRoute(carId);
-            fetchCameraImages(carId);
+            // Call fetchAllData initially and every 5 seconds
+            fetchAllData();
+            setInterval(() => {
+                console.log("Fetching updated data...");
+                fetchAllData();
+            }, 5000);
 
-            // Function to fetch car data
+            function fetchAllData() {
+                fetchCarData();
+                fetchBatteryPercentage();
+                fetchVehicleParameters(carId);
+                fetchVehicleRoute(carId);
+                fetchCameraImages(carId);
+            }
+
             function fetchCarData() {
-                fetch('http://127.0.0.1:5000/api/vehicles')
+                fetch('http://127.0.0.1:5000/api/vehicles', { cache: "no-store" })
                     .then(response => response.json())
                     .then(data => {
-                        const car = data.find(c => c.vehicle_id == carId); // Find the selected car
+                        const car = data.find(c => c.vehicle_id == carId); 
                         if (car) {
                             const { vehicle_name, latitude, longitude } = car;
-                            carLocation = [latitude, longitude]; // Store car location
+                            carLocation = [latitude, longitude];
 
-                            // Show car info
                             document.getElementById('carName').textContent = `Auto Nimi: ${vehicle_name}`;
-                            document.getElementById('coordinates').textContent = `Koordinaadid: (${latitude.toFixed(6)}, ${longitude.toFixed(6) })`;
+                            document.getElementById('coordinates').textContent = `Koordinaadid: (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`;
 
-                            // Update or add a marker for the car's location with the car icon
                             if (!markers[carId]) {
                                 carMarker = L.marker([latitude, longitude], { icon: carIcon }).addTo(map)
                                     .bindPopup(`<b>${vehicle_name}</b><br>Koordinaadid: (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`).openPopup();
+                                markers[carId] = carMarker;
                             } else {
-                                carMarker.setLatLng([latitude, longitude]); // Update marker position
+                                carMarker.setLatLng([latitude, longitude]);
                             }
-                        } else {
-                            alert('Car not found.');
                         }
                     })
                     .catch(error => console.error('Error fetching car data:', error));
             }
-            
-            // Function to fly to the car's location
+
             function flyToCarLocation() {
                 if (carLocation) {
                     map.flyTo(carLocation, 17, { 
@@ -149,14 +258,13 @@
                 }
             }
 
-            // Function to fetch battery percentage and update the battery icon
             function fetchBatteryPercentage() {
-                fetch(`http://127.0.0.1:5000/api/vehicle_parameters/${carId}/33`)
+                fetch(`http://127.0.0.1:5000/api/vehicle_parameters/${carId}/33`, { cache: "no-store" })
                 .then(response => response.json())
                 .then(data => {
                     if (data.data) {
                         const batteryValue = parseFloat(data.data);
-                        updateBatteryIcon(batteryValue);  // Update the battery icon with the fetched value
+                        updateBatteryIcon(batteryValue);
                     } else {
                         document.getElementById('batteryInfo').textContent = "Battery information not available.";
                     }
@@ -164,40 +272,35 @@
                 .catch(error => console.error('Error fetching battery percentage:', error));
             }
 
-            // Function to update the battery icon
             function updateBatteryIcon(value) {
                 const batteryLevel = document.getElementById('batteryLevel');
                 const batteryLabel = document.getElementById('batteryLabel');
-
-                // Update battery level width and label
                 batteryLevel.style.width = `${value}%`;
                 batteryLabel.textContent = `${value}%`;
             }
 
-            // Function to fetch vehicle route history
             function fetchVehicleRoute(vehicleId) {
-                fetch(`http://127.0.0.1:5000/api/vehicle_route/${vehicleId}`)
+                fetch(`http://127.0.0.1:5000/api/vehicle_route/${vehicleId}`, { cache: "no-store" })
                     .then(response => response.json())
                     .then(data => {
                         if (data.length > 0) {
                             routeData = data;
                             drawRoute(routeData);
                             setupSlider(routeData);
-                        } else {
-                            console.error('No route data found.');
                         }
                     })
                     .catch(error => console.error('Error fetching route data:', error));
             }
 
-            // Function to draw the route on the map
             function drawRoute(routeData) {
                 const latlngs = routeData.map(point => [point.latitude, point.longitude]);
-                const polyline = L.polyline(latlngs, { color: 'blue' }).addTo(map);
+                if (polyline) {
+                    map.removeLayer(polyline);
+                }
+                polyline = L.polyline(latlngs, { color: 'blue' }).addTo(map);
                 map.fitBounds(polyline.getBounds());
             }
 
-            // Function to setup the slider for route playback
             function setupSlider(routeData) {
                 const historySlider = document.getElementById('historySlider');
                 historySlider.max = routeData.length - 1;
@@ -212,10 +315,9 @@
                 });
             }
 
-            // Function to fetch vehicle parameters and update dynamic info
             async function fetchVehicleParameters(vehicleId) {
                 try {
-                    const response = await fetch(`http://127.0.0.1:5000/api/vehicle_parameters/${vehicleId}`);
+                    const response = await fetch(`http://127.0.0.1:5000/api/vehicle_parameters/${vehicleId}`, { cache: "no-store" });
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
                     }
@@ -240,28 +342,20 @@
 
             function updateParameters(parameters) {
                 const dynamicParametersDiv = document.getElementById('dynamicParameters');
-                dynamicParametersDiv.innerHTML = ''; // Clear previous parameters
-
-                // Track the latest value for each parameter
+                dynamicParametersDiv.innerHTML = ''; 
                 const latestParams = {};
 
-                // Iterate over the parameters to store the latest for each name
                 parameters.forEach(param => {
                     if (selectedParameterNames.includes(param.name)) {
-                        // Check if the parameter has a timestamp, and if so, compare
                         if (!latestParams[param.name] || new Date(param.timestamp) > new Date(latestParams[param.name].timestamp)) {
                             latestParams[param.name] = param;
                         }
                     }
                 });
 
-                // Display only the most recent values for each parameter
                 for (const paramName of selectedParameterNames) {
                     const param = latestParams[paramName];
-
                     let valueText;
-
-                    // If no data for the parameter, display "No info"
                     if (!param || param.data === null || param.data === undefined) {
                         valueText = "No info";
                     } else if (param.data === "1") {
@@ -277,16 +371,14 @@
                     }
 
                     const displayName = parameterDisplayIcons[paramName] || paramName.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
-
                     const paramElement = document.createElement('p');
                     paramElement.innerHTML = `${displayName}: ${valueText}`;
                     dynamicParametersDiv.appendChild(paramElement);
                 }
             }
 
-            // Function to fetch camera images and update the display
             function fetchCameraImages(vehicleId) {
-                fetch(`http://127.0.0.1:5000/api/vehicle_cameras/${vehicleId}`)
+                fetch(`http://127.0.0.1:5000/api/vehicle_cameras/${vehicleId}`, { cache: "no-store" })
                     .then(response => response.json())
                     .then(data => {
                         if (data.camera_front) {
@@ -298,17 +390,6 @@
                     })
                     .catch(error => console.error('Error fetching camera images:', error));
             }
-
-
-
-
-
-
-            // Call this to update parameters dynamically
-            setInterval(() => {
-                fetchVehicleParameters(carId);
-                fetchCameraImages(carId);
-            }, 5000); // Update every 5 seconds
 
             document.querySelector('.back-to-car-button').addEventListener('click', flyToCarLocation);
         });
