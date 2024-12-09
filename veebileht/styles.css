@@ -11,12 +11,12 @@ header {
     background-color: #4CAF50;
     color: white;
     padding: 10px;
-    text-align: center;
+    
 }
 
 section {
     padding: 20px;
-    text-align: center;
+    
 }
 
 #map {
@@ -174,17 +174,17 @@ select, button {
 }
 
 .fas {
-    color: #4caf50; /* Change icon color to green */
+    color: #4caf50; 
     margin-right: 10px; /* Space between icon and text */
 }
 
 .back-button {
     position: absolute;
-    top: 20px; /* Adjust the value for vertical position */
-    left: 20px; /* Adjust the value for horizontal position */
+    top: 20px; 
+    left: 20px; 
     font-size: 0.8em;
     padding: 5px 10px;
-    z-index: 10; /* Ensures it's above other content */
+    z-index: 10;
 }
 
 /* Media Queries for responsiveness */
@@ -218,5 +218,3 @@ select, button {
         left: 10px;
     }
 }
-
-
