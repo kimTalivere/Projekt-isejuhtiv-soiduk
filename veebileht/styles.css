@@ -3,6 +3,8 @@ body {
     margin: 0;
     padding: 0;
     background-color: #f0f0f0;
+    box-sizing: border-box;
+    
 }
 
 header {
@@ -26,27 +28,9 @@ section {
 /* New CSS for split-screen layout */
 .container {
     display: flex;
-    height: 100vh;
-}
-
-.left-panel {
-    width: 50%;
-    max-width: 500px;
-    padding: 20px;
-    display: flex;
     flex-direction: column;
-    justify-content: flex-start;  /* Sisu ülemisse ossa */
-    align-items: flex-start;      /* Ülemine paigutus horisontaalselt */
-}
-
-.right-panel {
-    width: 50%;
-    height: 100vh;
-    max-width: 500px;
-    display: flex;
-    justify-content: flex-start;  /* Sisu ülemisse ossa horisontaalselt */
-    align-items: flex-start;      /* Ülemine paigutus vertikaalselt */
-    flex-direction: column;
+    align-items: center;
+    width: 100%;
 }
 
 #map {
@@ -95,4 +79,144 @@ select, button {
     font-size: 16px;
     color: #333;
 }
+
+.camera-panel {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+.camera-image {
+    width: 100%;
+    max-width: 530px;
+    height: auto;
+    border: 2px solid #333;
+    border-radius: 10px;
+    background-color: #eee;
+    object-fit: cover;
+    margin-bottom: 20px;
+}
+
+.left-right-panels {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 1200px;
+    margin-top: 20px;
+    gap: 20px; /* Space between panels */
+}
+
+
+
+.left-panel, .right-panel {
+    flex: 1;
+    min-width: 280px;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.battery-icon {
+    position: relative;
+    width: 120px;
+    height: 60px;
+    border: 3px solid #333;
+    border-radius: 15px;
+    margin: 10px 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+
+.battery-icon::before {
+    content: '';
+    position: absolute;
+    left: -25px;
+    width: 10px;
+    height: 30px;
+    background: #333;
+    border-radius: 2px;
+}
+
+.battery-level {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    background: #4caf50;
+    transition: width 0.5s ease;
+}
+
+.battery-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1em;
+    font-weight: bold;
+    color: #333;
+    
+}
+
+.right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-left: 50px;
+}
+
+.fas {
+    color: #4caf50; /* Change icon color to green */
+    margin-right: 10px; /* Space between icon and text */
+}
+
+.back-button {
+    position: absolute;
+    top: 20px; /* Adjust the value for vertical position */
+    left: 20px; /* Adjust the value for horizontal position */
+    font-size: 0.8em;
+    padding: 5px 10px;
+    z-index: 10; /* Ensures it's above other content */
+}
+
+/* Media Queries for responsiveness */
+@media (max-width: 768px) {
+    .camera-image {
+        max-width: 100%;
+    }
+
+    .left-right-panels {
+        flex-direction: column; /* Stack the panels on smaller screens */
+        width: 100%;
+    }
+
+    .left-panel, .right-panel {
+        width: 100%; /* Each panel takes full width on small screens */
+    }
+
+    .camera-panel {
+        flex-direction: column; /* Stack cameras vertically on smaller screens */
+    }
+}
+
+@media (max-width: 480px) {
+    .left-panel, .right-panel {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .back-button {
+        top: 10px; /* Adjust position for smaller screens */
+        left: 10px;
+    }
+}
+
 
