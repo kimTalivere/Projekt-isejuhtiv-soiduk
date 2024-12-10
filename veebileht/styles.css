@@ -46,11 +46,11 @@ select, button {
 }
 
 #carImage {
-    width: 100%; /* Makes the image take the full width of the container */
-    height: auto; /* Maintains the aspect ratio */
-    max-width: 1000px; /* Set a maximum width if necessary */
+    width: 100%; 
+    height: auto; 
+    max-width: 1000px; 
     margin-top: 20px;
-    display: block; /* Ensures the image behaves as a block element */
+    display: block; 
     margin: 35px;
 }
 
@@ -105,7 +105,7 @@ select, button {
     width: 100%;
     max-width: 1200px;
     margin-top: 20px;
-    gap: 20px; /* Space between panels */
+    gap: 20px; 
 }
 
 
@@ -175,7 +175,7 @@ select, button {
 
 .fas {
     color: #4caf50; 
-    margin-right: 10px; /* Space between icon and text */
+    margin-right: 10px; 
 }
 
 .back-button {
@@ -184,7 +184,7 @@ select, button {
     left: 20px; 
     font-size: 0.8em;
     padding: 5px 10px;
-    z-index: 10;
+    z-index: 10; 
 }
 
 /* Media Queries for responsiveness */
@@ -194,16 +194,16 @@ select, button {
     }
 
     .left-right-panels {
-        flex-direction: column; /* Stack the panels on smaller screens */
+        flex-direction: column; 
         width: 100%;
     }
 
     .left-panel, .right-panel {
-        width: 100%; /* Each panel takes full width on small screens */
+        width: 100%; 
     }
 
     .camera-panel {
-        flex-direction: column; /* Stack cameras vertically on smaller screens */
+        flex-direction: column; 
     }
 }
 
@@ -214,7 +214,7 @@ select, button {
     }
 
     .back-button {
-        top: 10px; /* Adjust position for smaller screens */
+        top: 10px; 
         left: 10px;
     }
 }
