@@ -6,12 +6,19 @@ app = Flask(__name__)
 CORS(app)
 
 # Database connection parameters
+# Make sure to update these parameters according to your actual database configuration.
+# 'dbname': The name of the PostgreSQL database you are connecting to.
+# 'user': The username used to connect to the database.
+# 'password': The password for the specified database user.
+# 'host': The host/IP address where your database server is running.
+# 'port': The port on which your PostgreSQL server is listening (default is often 5432).
+
 db_params = {
-    'dbname': 'auto',
-    'user': 'postgres',
-    'password': 'password',
-    'host': 'localhost',  # Update with your actual database IP
-    'port': '5432'
+    'dbname': 'auto',       # Replace 'auto' with your actual database name
+    'user': 'postgres',     # Replace 'postgres' with your actual database username
+    'password': 'password', # Replace 'password' with the actual password for the user above
+    'host': 'localhost',    # Replace 'localhost' with the IP or hostname of your database server
+    'port': '5432'          # Replace '5432' with the actual port number if different from the default
 }
 
 # Parameter ID to Name Mapping
