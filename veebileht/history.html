@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Auto Parameetrite Ajalugu</title>
-    <!-- Link to Google Fonts for a blocky, monospaced font -->
+    <!-- Google Fonts for consistent font styling -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        /* Basic page styling */
         body {
             font-family: 'Roboto Mono', monospace;
             margin: 0;
@@ -17,6 +18,8 @@
         h1, h2 {
             font-weight: 700;
         }
+
+        /* Table styling */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -38,6 +41,8 @@
         tr:hover {
             background-color: #f1f1f1;
         }
+
+        /* Button and form element styling */
         #fetch-history {
             margin-top: 10px;
             padding: 10px 15px;
@@ -51,6 +56,7 @@
         #fetch-history:hover {
             background-color: #0056b3;
         }
+
         .back-button {
             background-color: #6c757d;
             color: white;
@@ -64,10 +70,12 @@
         .back-button:hover {
             background-color: #5a6268;
         }
+
         label {
             margin-right: 10px;
             font-weight: 700;
         }
+
         input, select {
             padding: 5px;
             margin: 5px;
@@ -75,9 +83,11 @@
         }
     </style>
     <script>
+        // Base URL for all API calls
         const API_BASE_URL = "http://127.0.0.1:5000/api";
 
-        // Mapping of parameter names to display icons and labels
+        // Mapping of parameter internal names to friendly display names
+        // This helps the user understand what each parameter means.
         const parameterDisplayIcons = {
             'hazzard_lights': ' Ohutuled',
             'high_beam': 'Kaugtuled',
@@ -90,13 +100,17 @@
             'gnss': 'Koordinaadid',
         };
 
+        /**
+         * Fetch available parameter names from the API and populate the dropdown.
+         * Only parameters that are mapped to a friendly name (above) are shown.
+         */
         async function fetchParameterNames() {
             const response = await fetch(`${API_BASE_URL}/parameter_names`);
             const data = await response.json();
             const parameterSelect = document.getElementById("parameter");
-            parameterSelect.innerHTML = ""; // Clear existing options
+            parameterSelect.innerHTML = "";
 
-            // Add the "--Vali--" option as the first item
+            // Default placeholder option
             const defaultOption = document.createElement("option");
             defaultOption.value = "";
             defaultOption.disabled = true;
@@ -104,7 +118,7 @@
             defaultOption.innerHTML = "--Vali--";
             parameterSelect.appendChild(defaultOption);
 
-            // Add the rest of the options
+            // Populate dropdown with parameters that have display icons/names
             data.forEach(param => {
                 if (parameterDisplayIcons[param.name]) {
                     const option = document.createElement("option");
@@ -115,11 +129,15 @@
             });
         }
 
-
+        /**
+         * Fetch the history of a specific parameter for the selected vehicle.
+         * This function sends a request to the API and displays the data in a table.
+         */
         async function fetchParameterHistory() {
-            const vehicleId = document.getElementById("vehicle-id").dataset.carId;  // Use carId stored in data attribute
+            const vehicleId = document.getElementById("vehicle-id").dataset.carId;
             const parameterId = document.getElementById("parameter").value;
 
+            // Ensure both a vehicle and a parameter are selected
             if (!vehicleId || !parameterId) {
                 alert("Please select a vehicle and parameter.");
                 return;
@@ -130,29 +148,32 @@
                 const data = await response.json();
 
                 const tableBody = document.getElementById("history-table-body");
-                tableBody.innerHTML = ""; // Clear existing rows
+                tableBody.innerHTML = "";
 
+                // If API returns an error, display it
                 if (data.error) {
                     tableBody.innerHTML = `<tr><td colspan="3">${data.error}</td></tr>`;
                     return;
                 }
 
-                // Check if data is empty, if so show "Pole andmeid"
+                // If no data is returned, show a message
                 if (data.length === 0) {
                     tableBody.innerHTML = `<tr><td colspan="3">Pole andmeid</td></tr>`;
                     return;
                 }
 
+                // For each history entry, show date, time, and parameter value
                 data.forEach(entry => {
-                    const [date, timeWithZone] = entry.timestamp.split('T'); // Split timestamp into date and time with timezone
+                    const [date, timeWithZone] = entry.timestamp.split('T');
                     let dataDisplay;
 
-                    // Check if the data field is an object and handle GNSS formatting
+                    // For GNSS type data, it's an object with latitude/longitude
                     if (typeof entry.data === 'object' && entry.data !== null) {
                         const { latitude, longitude } = entry.data;
                         dataDisplay = `Laiuskraad: ${latitude.toFixed(6)}, Pikkuskraad: ${longitude.toFixed(6)}`;
                     } else {
-                        dataDisplay = entry.data; // Use raw data for non-object values
+                        // For other data types, display as-is
+                        dataDisplay = entry.data;
                     }
 
                     const row = document.createElement("tr");
@@ -169,30 +190,41 @@
             }
         }
 
-
+        /**
+         * On page load:
+         * - Get carId and carName from URL parameters and set them in the input field
+         * - Fetch the list of parameters to populate the dropdown
+         * - Set up the event listener for the "Otsi" (Fetch) button
+         */
         document.addEventListener("DOMContentLoaded", async () => {
-            // Extract the carId and carName from the URL query parameters
             const urlParams = new URLSearchParams(window.location.search);
             const carId = urlParams.get("carId");
             const carName = urlParams.get("carName");
 
-            // If carId and carName are present, display carName in the input and store carId in a data attribute
+            // If carId and carName are present, display them. Otherwise, show a placeholder.
             if (carId && carName) {
                 const vehicleIdInput = document.getElementById("vehicle-id");
-                vehicleIdInput.value = carName;  // Display car name in the input field
-                vehicleIdInput.dataset.carId = carId;  // Store carId as a data attribute for later use
+                vehicleIdInput.value = carName;
+                vehicleIdInput.dataset.carId = carId;
             } else {
-                document.getElementById("vehicle-id").placeholder = "Auto not found"; // Fallback message
+                document.getElementById("vehicle-id").placeholder = "Auto not found";
             }
 
+            // Fetch parameter names to fill the dropdown
             await fetchParameterNames();
+
+            // Add event listener to the search button
             document.getElementById("fetch-history").addEventListener("click", fetchParameterHistory);
         });
     </script>
 </head>
 <body>
+    <!-- Button to go back to car selection -->
     <button class="back-button" onclick="window.location.href='SelectCar.html'">Tagasi</button>
+
     <h1>Auto Parameetrite Ajalugu</h1>
+
+    <!-- Vehicle and Parameter Selection -->
     <div>
         <label for="vehicle-id">Auto nimi:</label>
         <input type="text" id="vehicle-id" placeholder="Valige auto ID" readonly>
@@ -202,11 +234,12 @@
             <option value="" disabled selected>--Vali--</option>
         </select>
 
-
         <button id="fetch-history">Otsi</button>
     </div>
 
     <h2>Parameetri Ajalugu</h2>
+
+    <!-- Table to display the fetched parameter history -->
     <table>
         <thead>
             <tr>
