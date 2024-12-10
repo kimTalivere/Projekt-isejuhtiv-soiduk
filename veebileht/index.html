@@ -6,16 +6,17 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Car Tracking</title>
 
-    <!-- Leaflet CSS -->
+    <!-- Leaflet CSS for map display -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="styles.css"> 
     
-    <!-- Chart.js -->
+    <!-- Chart.js (not currently used, but could be for future graphs) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Font Awesome for icons -->
+    <!-- Font Awesome for icons (used in parameter display) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
     <style>
+        /* Battery icon styling */
         .battery-icon {
             position: relative;
             width: 120px;
@@ -58,6 +59,7 @@
             color: #333;
         }
 
+        /* Left panel for car data */
         .left-panel {
             display: flex;
             flex-direction: column;
@@ -67,6 +69,7 @@
             max-width: 50%;
         }
 
+        /* Right panel for map */
         .right-panel {
             display: flex;
             flex-direction: column;
@@ -81,6 +84,7 @@
             margin-right: 10px;
         }
 
+        /* Panel holding camera images */
         .camera-panel {
             display: flex;
             flex-direction: row;
@@ -89,6 +93,7 @@
             margin-top: 20px;
         }
 
+        /* Camera images styling */
         .camera-image {
             width: 320px;
             height: 240px;
@@ -98,6 +103,7 @@
             object-fit: cover;
         }
 
+        /* Container holding both left and right panels under cameras */
         .left-right-panels {
             display: flex;
             flex-direction: row;
@@ -105,15 +111,7 @@
             margin-top: 20px;
         }
 
-        .slider-container {
-            margin-top: 20px;
-            width: 80%;
-        }
-
-        #historySlider {
-            width: 100%;
-        }
-
+        /* Back button to return to car selection page */
         .back-button {
             position: absolute; 
             top: 20px; 
@@ -122,80 +120,85 @@
             padding: 5px 10px;
         }
 
+        /* Button to return map view to the current car location */
         .back-to-car-button {
             margin-top: 20px;
         }
     </style>
 </head>
 <body>
+    <!-- Back button to SelectCar.html -->
     <div>
         <button class="back-button" onclick="window.location.href='SelectCar.html'">Tagasi</button>
     </div>
+
     <section>
         <div class="container">
             
-            <!-- Camera images at the top -->
+            <!-- Top section showing front and back camera images of the car -->
             <div class="camera-panel">
                 <img id="cameraFront" class="camera-image" alt="Front Camera View">
                 <img id="cameraBack" class="camera-image" alt="Back Camera View">
             </div>
 
-            <!-- Left and Right Panels below the camera images -->
+            <!-- Below cameras, we have two panels: Left for car info, Right for map -->
             <div class="left-right-panels">
-                <!-- Left panel for car information -->
+                <!-- Left panel: Car parameters, coordinates, battery, etc. -->
                 <div class="left-panel">
                     <h3>Auto Parameetrid</h3>
                     <p id="carName">Auto Nimi:</p>
                     <p id="coordinates">Koordinaadid: </p>
                     <p id="batteryInfo"></p>
 
+                    <!-- Battery indicator -->
                     <div class="battery-icon">
                         <div class="battery-level" id="batteryLevel"></div>
                         <div class="battery-label" id="batteryLabel">0%</div>
                     </div>
 
-                    <div id="dynamicParameters">
-                        <!-- Parameters will be injected here -->
-                    </div>
+                    <!-- Dynamic car parameters (hazard lights, door status, etc.) will be shown here -->
+                    <div id="dynamicParameters"></div>
 
-                    
                 </div>
 
-                <!-- Right panel for the map -->
+                <!-- Right panel: Map display -->
                 <div class="right-panel">
-                    <div id="map"></div> <!-- Map container -->
+                    <!-- Map container where Leaflet map is displayed -->
+                    <div id="map"></div> 
 
-                    <div class="slider-container">
-                        <input type="range" min="0" max="100" value="0" id="historySlider">
-                    </div>
+                    <!-- Button to return the map to the current car location -->
                     <button class="back-to-car-button" onclick="flyToCarLocation()">Tagasi auto juurde</button>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Leaflet JS -->
+    <!-- Leaflet JS for map functionality -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
+            // Helper function to extract carId from URL query params
             function getQueryParams() {
                 const urlParams = new URLSearchParams(window.location.search);
                 return { carId: urlParams.get('carId') };
             }
 
-            const markers = {}; 
+            const markers = {};  // To store map markers keyed by carId
             const carId = getQueryParams().carId;
-            let carLocation = null; 
-            let routeData = []; 
-            let carMarker = null;
-            let polyline = null;
+            let carLocation = null;  // Current car coordinates
+            let routeData = [];      // Historical route data points
+            let carMarker = null;    // Marker for the car on the map
+            let polyline = null;     // Polyline for the route history
 
+            // Initialize the map centered on a default location
             var map = L.map('map').setView([59.395720, 24.672221], 13);
 
+            // Add OpenStreetMap tiles to the map
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
+            // Custom icon for the car marker
             const carIcon = L.icon({
                 iconUrl: 'images/mapPing.png',
                 iconSize: [40, 40],
@@ -203,18 +206,27 @@
                 popupAnchor: [0, -40]
             });
 
+            // If no carId is provided, alert the user and stop execution
             if (!carId) {
                 alert('No car selected. Please go back to select a car.');
                 return;
             }
 
-            // Call fetchAllData initially and every 5 seconds
+            // Fetch all data initially and update every 5 seconds
             fetchAllData();
             setInterval(() => {
                 console.log("Fetching updated data...");
                 fetchAllData();
             }, 5000);
 
+            /**
+             * Fetch all necessary data: 
+             * - Car basic info (location, name)
+             * - Battery percentage
+             * - Vehicle parameters (lights, doors, speed, etc.)
+             * - Vehicle route (for historical playback)
+             * - Camera images (front/back)
+             */
             function fetchAllData() {
                 fetchCarData();
                 fetchBatteryPercentage();
@@ -223,6 +235,9 @@
                 fetchCameraImages(carId);
             }
 
+            /**
+             * Fetch and display basic car data such as name and current location.
+             */
             function fetchCarData() {
                 fetch('http://127.0.0.1:5000/api/vehicles', { cache: "no-store" })
                     .then(response => response.json())
@@ -235,6 +250,7 @@
                             document.getElementById('carName').textContent = `Auto Nimi: ${vehicle_name}`;
                             document.getElementById('coordinates').textContent = `Koordinaadid: (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`;
 
+                            // If there's no marker, create one; otherwise, update it
                             if (!markers[carId]) {
                                 carMarker = L.marker([latitude, longitude], { icon: carIcon }).addTo(map)
                                     .bindPopup(`<b>${vehicle_name}</b><br>Koordinaadid: (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`).openPopup();
@@ -247,6 +263,9 @@
                     .catch(error => console.error('Error fetching car data:', error));
             }
 
+            /**
+             * Move the map view back to the car's current location.
+             */
             function flyToCarLocation() {
                 if (carLocation) {
                     map.flyTo(carLocation, 17, { 
@@ -258,6 +277,9 @@
                 }
             }
 
+            /**
+             * Fetch the battery percentage of the current vehicle and update the UI.
+             */
             function fetchBatteryPercentage() {
                 fetch(`http://127.0.0.1:5000/api/vehicle_parameters/${carId}/33`, { cache: "no-store" })
                 .then(response => response.json())
@@ -272,6 +294,9 @@
                 .catch(error => console.error('Error fetching battery percentage:', error));
             }
 
+            /**
+             * Update the battery level indicator based on the fetched value.
+             */
             function updateBatteryIcon(value) {
                 const batteryLevel = document.getElementById('batteryLevel');
                 const batteryLabel = document.getElementById('batteryLabel');
@@ -279,6 +304,9 @@
                 batteryLabel.textContent = `${value}%`;
             }
 
+            /**
+             * Fetch the route history of the vehicle and draw it on the map.
+             */
             function fetchVehicleRoute(vehicleId) {
                 fetch(`http://127.0.0.1:5000/api/vehicle_route/${vehicleId}`, { cache: "no-store" })
                     .then(response => response.json())
@@ -286,35 +314,29 @@
                         if (data.length > 0) {
                             routeData = data;
                             drawRoute(routeData);
-                            setupSlider(routeData);
+                            // Removed slider functionality
                         }
                     })
                     .catch(error => console.error('Error fetching route data:', error));
             }
 
+            /**
+             * Draw the vehicle's historical route as a polyline on the map.
+             */
             function drawRoute(routeData) {
                 const latlngs = routeData.map(point => [point.latitude, point.longitude]);
+                // Remove old polyline if exists
                 if (polyline) {
                     map.removeLayer(polyline);
                 }
+                // Add new polyline
                 polyline = L.polyline(latlngs, { color: 'blue' }).addTo(map);
                 map.fitBounds(polyline.getBounds());
             }
 
-            function setupSlider(routeData) {
-                const historySlider = document.getElementById('historySlider');
-                historySlider.max = routeData.length - 1;
-
-                historySlider.addEventListener('input', function() {
-                    const index = parseInt(historySlider.value);
-                    const point = routeData[index];
-                    if (carMarker) {
-                        carMarker.setLatLng([point.latitude, point.longitude]);
-                        map.panTo([point.latitude, point.longitude]);
-                    }
-                });
-            }
-
+            /**
+             * Fetch various vehicle parameters and update them in the UI.
+             */
             async function fetchVehicleParameters(vehicleId) {
                 try {
                     const response = await fetch(`http://127.0.0.1:5000/api/vehicle_parameters/${vehicleId}`, { cache: "no-store" });
@@ -328,6 +350,7 @@
                 }
             }
 
+            // Icons and friendly names for parameters
             const parameterDisplayIcons = {
                 'hazzard_lights': '<i class="fas fa-exclamation-triangle"></i> Ohutuled',
                 'high_beam': '<i class="fas fa-lightbulb"></i> Kaugtuled',
@@ -338,13 +361,18 @@
                 'driving_mode': '<i class="fas fa-car"></i> Sõidurežiim',
             };
 
+            // Select only these parameters to show
             const selectedParameterNames = ['hazzard_lights', 'high_beam', 'marker_lights', 'brake_lights', 'door_status', 'current_velocity', 'driving_mode'];
 
+            /**
+             * Update the UI with the latest available values of the selected parameters.
+             */
             function updateParameters(parameters) {
                 const dynamicParametersDiv = document.getElementById('dynamicParameters');
                 dynamicParametersDiv.innerHTML = ''; 
+                
+                // Keep only the latest value for each parameter
                 const latestParams = {};
-
                 parameters.forEach(param => {
                     if (selectedParameterNames.includes(param.name)) {
                         if (!latestParams[param.name] || new Date(param.timestamp) > new Date(latestParams[param.name].timestamp)) {
@@ -353,9 +381,11 @@
                     }
                 });
 
+                // Display each selected parameter with an icon and a friendly name
                 for (const paramName of selectedParameterNames) {
                     const param = latestParams[paramName];
                     let valueText;
+                    // Determine how to display parameter values
                     if (!param || param.data === null || param.data === undefined) {
                         valueText = "No info";
                     } else if (param.data === "1") {
@@ -367,6 +397,7 @@
                     } else if (param.name === 'brake_lights') {
                         valueText = param.data === false ? 'Ei põle' : 'Põleb';
                     } else {
+                        // Default to raw data if not handled by special rules
                         valueText = param.data;
                     }
 
@@ -377,10 +408,14 @@
                 }
             }
 
+            /**
+             * Fetch the front and back camera images for the car, if available, and display them.
+             */
             function fetchCameraImages(vehicleId) {
                 fetch(`http://127.0.0.1:5000/api/vehicle_cameras/${vehicleId}`, { cache: "no-store" })
                     .then(response => response.json())
                     .then(data => {
+                        // If camera links are returned, update the image sources
                         if (data.camera_front) {
                             document.getElementById('cameraFront').src = '\static' + data.camera_front;
                         }
@@ -391,6 +426,7 @@
                     .catch(error => console.error('Error fetching camera images:', error));
             }
 
+            // Re-center the map on car location when the "Tagasi auto juurde" button is clicked
             document.querySelector('.back-to-car-button').addEventListener('click', flyToCarLocation);
         });
     </script>
