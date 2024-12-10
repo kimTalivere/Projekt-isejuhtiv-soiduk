@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ISEAUTO Vehicle Selection</title>
 
-    <!-- Leaflet CSS -->
+    <!-- Leaflet CSS for map styling -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* Basic reset and layout */
+        /* Basic page layout and styling */
         * {
             margin: 0;
             padding: 0;
@@ -60,6 +60,7 @@
             justify-content: center;
         }
 
+        /* The map container */
         #map {
             width: 100%;
             height: 100%;
@@ -76,6 +77,7 @@
             overflow-y: auto;
         }
 
+        /* Individual car info card */
         .car-info {
             background-color: #ffffff;
             padding: 15px;
@@ -111,6 +113,7 @@
             color: #555;
         }
 
+        /* Battery icon styling */
         .battery-icon {
             position: relative;
             width: 80px;
@@ -153,6 +156,7 @@
             color: #333;
         }
 
+        /* History container styling */
         .history-container {
             background-color: #d3d3d3;
             padding: 15px;
@@ -183,33 +187,43 @@
         <p class="subtitle">Palun valige auto täpsema info jaoks</p>
 
         <div class="main-content">
+            <!-- Left panel holding the map -->
             <div class="left-panel">
                 <div id="map"></div>
             </div>
 
+            <!-- Right panel holds the dynamically populated list of cars -->
             <div class="right-panel" id="carList"></div>
         </div>
     </div>
 
-    <!-- Leaflet JS -->
+    <!-- Leaflet JS for map functionality -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
+        // Initialize the Leaflet map centered at given coordinates with a certain zoom level
         var map = L.map('map').setView([59.395720, 24.672221], 13);
+
+        // Add OpenStreetMap tiles to the map with attribution
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
+        // Object to keep track of markers by their vehicle ID
         const markers = {};
 
-        // We'll store references to car cards to update them without rebuilding
+        // Store references to car cards for easy updating
         const carCardRefs = {};
 
-        // Fetch all car data
+        /**
+         * Fetch the list of vehicles from the API.
+         * This retrieves vehicle data such as name, location, etc.
+         */
         function fetchCarData() {
             fetch('http://127.0.0.1:5000/api/vehicles', { cache: "no-store" })
                 .then(response => response.json())
                 .then(vehicles => {
+                    // Filter out duplicates by vehicle_id, only one entry per vehicle
                     const uniqueCars = vehicles.reduce((acc, current) => {
                         if (!acc.some(car => car.vehicle_id === current.vehicle_id)) {
                             acc.push(current);
@@ -217,39 +231,50 @@
                         return acc;
                     }, []);
 
+                    // Transform the raw data into a simpler format for our usage
                     const cars = uniqueCars.map(vehicle => ({
                         id: vehicle.vehicle_id,
                         name: vehicle.vehicle_name,
                         latitude: vehicle.latitude || 0,
                         longitude: vehicle.longitude || 0,
-                        in_motion: false,
-                        velocity: null
+                        in_motion: false, // Placeholder: motion info can be updated if available
+                        velocity: null // Placeholder: speed info can be updated if available
                     }));
 
+                    // Populate the car info cards in the right panel
                     populateCarInfo(cars);
+
+                    // Place markers on the map for each car
                     displayCarMarkers(cars);
                 })
                 .catch(error => console.error("Error fetching vehicle data:", error));
         }
 
+        /**
+         * Populate the right-panel with a list of car info cards.
+         * If a card already exists for a car, update it; otherwise, create a new one.
+         */
         function populateCarInfo(cars) {
             const carList = document.getElementById('carList');
 
             cars.forEach((car) => {
                 let carCard = carCardRefs[car.id];
 
+                // If we don't have a card reference, create a new card
                 if (!carCard) {
-                    // Create a new card since it doesn't exist
                     carCard = document.createElement('div');
                     carCard.className = 'car-info';
                     carCard.setAttribute('id', `carCard${car.id}`);
+
+                    // When the user clicks on a car card, navigate to a detail page
                     carCard.onclick = () => showDetails(car.id);
 
+                    // Create a container for car details
                     const carDetailsDiv = document.createElement('div');
                     carDetailsDiv.className = 'car-details';
                     carDetailsDiv.setAttribute('id', `carDetails${car.id}`);
 
-                    // We'll create placeholder elements for details:
+                    // Create placeholders for name, coordinates, motion, and speed
                     const nameEl = document.createElement('p');
                     nameEl.className = 'info-item';
                     nameEl.setAttribute('id', `carName${car.id}`);
@@ -266,12 +291,13 @@
                     speedEl.className = 'info-item';
                     speedEl.setAttribute('id', `carSpeed${car.id}`);
 
+                    // Append all detail elements to the details container
                     carDetailsDiv.appendChild(nameEl);
                     carDetailsDiv.appendChild(coordsEl);
                     carDetailsDiv.appendChild(motionEl);
                     carDetailsDiv.appendChild(speedEl);
 
-                    // Battery icon
+                    // Create a battery icon element for showing battery levels
                     const batteryIcon = document.createElement('div');
                     batteryIcon.className = 'battery-icon';
                     batteryIcon.innerHTML = `
@@ -279,20 +305,26 @@
                         <div class="battery-label" id="batteryLabel${car.id}">0%</div>
                     `;
 
-                    // History
+                    // Create a history container that leads to history details when clicked
                     const historyContainer = document.createElement('div');
                     historyContainer.className = 'history-container';
                     historyContainer.onclick = (e) => {
+                        // Stop the event from bubbling up to the car card click event
                         e.stopPropagation();
+                        // Navigate to history page with carId and carName as query parameters
                         window.location.href = `history.html?carId=${car.id}&carName=${encodeURIComponent(car.name)}`;
                     };
                     historyContainer.innerHTML = `<div class="history-label">Ajalugu</div>`;
 
+                    // Add all elements to the car card
                     carCard.appendChild(carDetailsDiv);
                     carCard.appendChild(batteryIcon);
                     carCard.appendChild(historyContainer);
+
+                    // Append the complete car card to the car list container
                     carList.appendChild(carCard);
 
+                    // Store references to elements for easy future updates
                     carCardRefs[car.id] = {
                         card: carCard,
                         nameEl,
@@ -302,25 +334,31 @@
                     };
                 }
 
-                // Update existing values without removing/adding card
+                // Update the content of the existing or newly created card
                 const ref = carCardRefs[car.id];
                 ref.nameEl.textContent = `Nimi: ${car.name}`;
                 ref.coordsEl.textContent = `Koordinaadid: ${car.latitude.toFixed(6)}, ${car.longitude.toFixed(6)}`;
                 ref.motionEl.textContent = `Liikvel: ${car.in_motion ? 'Yes' : 'No'}`;
                 ref.speedEl.textContent = `Kiirus: ${car.velocity || 'N/A'}`;
 
-                // Update battery after updating card (this will only update the width/label)
+                // After updating car details, fetch and update the battery percentage
                 fetchBatteryPercentage(car.id);
             });
         }
 
+        /**
+         * Fetch the battery percentage of a given vehicle and update the battery UI.
+         */
         function fetchBatteryPercentage(vehicleId) {
+            // Parameter '33' in the endpoint might correspond to a battery parameter in the backend API
             fetch(`http://127.0.0.1:5000/api/vehicle_parameters/${vehicleId}/33`, { cache: "no-store" })
                 .then(response => response.json())
                 .then(data => {
                     const batteryLevel = data && data.data ? parseFloat(data.data) : 0;
                     const batteryDiv = document.getElementById(`batteryLevel${vehicleId}`);
                     const batteryLabel = document.getElementById(`batteryLabel${vehicleId}`);
+
+                    // Update the battery bar width and label text
                     if (batteryDiv && batteryLabel) {
                         batteryDiv.style.width = `${batteryLevel}%`;
                         batteryLabel.textContent = `${batteryLevel}%`;
@@ -329,10 +367,15 @@
                 .catch(error => console.error('Error fetching battery percentage:', error));
         }
 
+        /**
+         * Display car markers on the map.
+         * Each car gets a custom marker image if available, otherwise a default marker is used.
+         */
         function displayCarMarkers(cars) {
             const defaultPingImage = 'images/mapPing.png';
 
             cars.forEach((car, index) => {
+                // Attempt to load a custom ping image for each car, fallback to default
                 const dynamicImage = `images/mapPing${index + 1}.png`;
                 const img = new Image();
                 img.src = dynamicImage;
@@ -346,6 +389,9 @@
                 };
             });
 
+            /**
+             * Create or update the marker for a given car on the map.
+             */
             function addMarker(car, iconUrl) {
                 const carIcon = L.icon({
                     iconUrl: iconUrl,
@@ -354,26 +400,32 @@
                     popupAnchor: [0, -40],
                 });
 
+                // Only add/update the marker if we have valid coordinates
                 if (car.latitude && car.longitude) {
                     if (!markers[car.id]) {
+                        // Create a new marker if it doesn't exist yet
                         markers[car.id] = L.marker([car.latitude, car.longitude], { icon: carIcon })
                             .addTo(map)
                             .bindPopup(`<b>${car.name}</b><br>Coordinates: (${car.latitude.toFixed(6)}, ${car.longitude.toFixed(6)})`);
                     } else {
+                        // If the marker already exists, just update its position
                         markers[car.id].setLatLng([car.latitude, car.longitude]);
                     }
                 }
             }
         }
 
+        /**
+         * Show more details for the selected car by navigating to an index page with query params.
+         */
         function showDetails(carId) {
             window.location.href = `index.html?carId=${carId}`;
         }
 
-        // Initial data fetch
+        // Fetch the initial data set when the page loads
         fetchCarData();
 
-        // Fetch updated data every 5 seconds
+        // Update data every 5 seconds to keep info fresh
         setInterval(() => {
             fetchCarData();
         }, 5000);
